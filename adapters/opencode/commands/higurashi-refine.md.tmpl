@@ -1,0 +1,17 @@
+---
+description: Refine one ambiguous work item into a confirmed contract
+agent: higurashi-refine
+subtask: false
+---
+
+Run the Higurashi refinement workflow for these exact arguments:
+
+`$ARGUMENTS`
+
+Accept `<WORK-ITEM-ID>` with an optional `--from <project-relative-path>`.
+Treat the work-item ID as opaque input, never as a path or shell fragment.
+The user may instead paste a requirement in the conversation. Reject any other
+arguments.
+
+Load the `higurashi-refine` skill and follow its question, confirmation,
+requirement-import, artifact, ownership, and handoff contracts.

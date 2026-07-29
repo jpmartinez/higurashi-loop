@@ -1,0 +1,8 @@
+b29615fddafb712a28aa4ad8580be987061fc4e3fd6155e67278e30b77116195  .opencode/agents/higurashi-apply.md  adapters/opencode/agents/higurashi-apply.md.tmpl
+a2bc2a688a24449803819fe3f0132e85ba0cb2315917f270b8b5a6cdd6a6f307  .opencode/agents/higurashi-orchestrator.md  adapters/opencode/agents/higurashi-orchestrator.md.tmpl
+8c58d2665ad7fbb4fa2a0e35b5c2e23448dbdd678ac89eaa5a0206167b0beaed  .opencode/agents/higurashi-plan.md  adapters/opencode/agents/higurashi-plan.md.tmpl
+02b24c73fca89ddfb7058d4c8418c570fae923aaf92c4e810d2f01d274cac876  .opencode/agents/higurashi-refine.md  adapters/opencode/agents/higurashi-refine.md.tmpl
+09b98e23e5966709c7da4cc261dadab84268ff02b146d59bd412d348b0b1c9c6  .opencode/agents/higurashi-verify-contract.md  adapters/opencode/agents/higurashi-verify-contract.md.tmpl
+e3fff832d9e0abf55d6c4ca1108a8419ad606652eba3f45981dc4d14e61fcb3d  .opencode/agents/higurashi-verify-risk.md  adapters/opencode/agents/higurashi-verify-risk.md.tmpl
+addede5450d4b8a2d5ff13da22e917645c9919183614ff48a1304ba92d779f92  .opencode/commands/higurashi-deliver.md  adapters/opencode/commands/higurashi-deliver.md.tmpl
+0bc3f05e5dc23e05047cfa023ca216548ea281505e4d526255b587916e363ca2  .opencode/commands/higurashi-refine.md  adapters/opencode/commands/higurashi-refine.md.tmpl

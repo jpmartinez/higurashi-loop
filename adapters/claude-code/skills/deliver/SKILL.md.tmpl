@@ -1,0 +1,71 @@
+---
+name: deliver
+description: Deliver one work item through the guarded, resumable Higurashi loop. Use only when the user explicitly invokes this skill with a work-item ID.
+disable-model-invocation: true
+---
+
+# Higurashi Loop delivery
+
+Run in the main conversation. Do not fork this skill into another context.
+Accept only `<WORK-ITEM-ID>`, `<WORK-ITEM-ID> --plan-only`, or
+`<WORK-ITEM-ID> --repair` from `$ARGUMENTS`. Treat the ID as opaque input and
+reject every other argument shape.
+
+Load the project-local `higurashi-deliver` skill for the canonical artifact,
+transition, TDD, review, and reporting contracts. If that skill is unavailable,
+stop and report that the Claude Code adapter installation is incomplete.
+
+Do not alter control documents, generated ownership markers, or existing tests to bypass required behavior; report a blocker instead.
+
+## Coordinate
+
+1. Run `higurashi inspect <ID> --json` and
+   `higurashi config validate --json`. Use their exact durable status, paths,
+   hash, progress, next task, CodeGraph state, instruction files, configured
+   verification commands, and loop limits.
+2. Stop on failure or completion. Never treat `handoff_required`,
+   `repair_ready`, or `repair_recovery_required` as resume. For `ready`, invoke
+   `higurashi-loop:higurashi-plan` exactly once. If it returns
+   `refinement_required`, stop without creating an artifact and return exactly
+   `/higurashi-loop:refine <ID>`. When a resumed artifact status is `refined`,
+   invoke PLAN once to add tasks and perform the guarded transition to
+   `planned`. For every other resumed artifact, skip PLAN.
+3. For `--plan-only`, stop after inspecting the new or resumed plan.
+4. For each APPLY batch, re-inspect and invoke a fresh
+   `higurashi-loop:higurashi-apply` with exactly one returned task. Label and
+   include the work-item ID, artifact path and hash, task ID and complete text,
+   allowed scope, relevant instructions, CodeGraph ordering, the exact
+   anti-bypass sentence, and a `Permitted commands:` list. The list contains
+   only exact command lines: `higurashi inspect '<ID>' --json`, task-local red,
+   green, and check commands, applicable configured verification commands, and
+   bounded read-only `git diff` or `git status --short` commands when needed.
+   For a legacy task without the labeled clause, use only exact executable
+   commands explicitly named in its failing or passing evidence; stop if those
+   are insufficient. Bash permission is not command authority. Require a
+   changed artifact hash and increased completed count. Use
+   `loop.maxApplyBatchesPerRun`; never substitute `maxTurns` for that limit.
+5. After zero pending tasks, run configured normalization and verification,
+   freeze the diff, and invoke `higurashi-loop:higurashi-verify-contract` and
+   `higurashi-loop:higurashi-verify-risk` independently with identical evidence.
+6. Use at most `loop.maxRepairAttempts`. One permitted repair is one fresh APPLY
+   invocation containing only the blockers and original scope, followed by one
+   rerun of both reviewers.
+7. After exhausted blockers, keep the candidate uncommitted, transition to
+   blocked, write only the exact expected versioned handoff with the complete
+   structured reviewer evidence, and invoke PLAN only to append one bounded
+   task per blocker. Do not authorize or APPLY. Return exactly the single
+   `nextCommand`.
+8. For explicit `--repair`, require `repair_ready`, run the exact
+   `nextCommand`, then APPLY and rerun both reviewers fresh. For
+   `repair_recovery_required`, run only the returned command. A normal invocation
+   never authorizes repair.
+
+Every dynamic subagent prompt must contain the exact anti-bypass sentence above.
+Use only the four Higurashi agents. The coordinator may write only the exact
+expected repair handoff, never implementation or the primary artifact. Never
+create a temporary worktree, recommend committing a blocked candidate, commit,
+or push.
+
+Use CodeGraph before broad filesystem exploration for structure, call flow,
+dependencies, or impact. Verify the `codegraph` MCP connection and project root
+rather than assuming the generated configuration is trusted or connected.

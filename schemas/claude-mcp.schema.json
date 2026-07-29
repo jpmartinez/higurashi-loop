@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://higurashi-loop.local/schemas/claude-mcp.schema.json",
+  "title": "Generated Higurashi Claude Code MCP configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mcpServers"
+  ],
+  "properties": {
+    "mcpServers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "codegraph"
+      ],
+      "properties": {
+        "codegraph": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "args",
+            "command",
+            "env",
+            "type"
+          ],
+          "properties": {
+            "args": {
+              "const": [
+                "serve",
+                "--mcp",
+                "--path",
+                "${CLAUDE_PROJECT_DIR}"
+              ]
+            },
+            "command": {
+              "const": "codegraph"
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "HIGURASHI_GENERATED"
+              ],
+              "properties": {
+                "HIGURASHI_GENERATED": {
+                  "type": "string",
+                  "pattern": "^Higurashi-Generated: generator=higurashi "
+                }
+              }
+            },
+            "type": {
+              "const": "stdio"
+            }
+          }
+        }
+      }
+    }
+  }
+}

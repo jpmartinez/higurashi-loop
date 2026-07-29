@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://higurashi-loop.invalid/schemas/transition.schema.json",
+  "title": "Higurashi transition result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "command",
+    "ok",
+    "kind"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "command": {
+      "const": "transition"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "transitioned",
+        "unchanged",
+        "stale_hash",
+        "illegal_transition",
+        "invalid_artifact",
+        "write_failed",
+        "unknown",
+        "missing_requirement_source",
+        "codegraph_unavailable",
+        "codegraph_unhealthy",
+        "configuration_missing",
+        "configuration_invalid",
+        "conflict",
+        "not_git_project",
+        "unsafe_project_root",
+        "invalid_usage"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projectRoot": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workItemId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requirementSource": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifactPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifactStatus": {
+      "type": "string",
+      "enum": [
+        "refined",
+        "planned",
+        "implementing",
+        "verifying",
+        "blocked",
+        "complete"
+      ]
+    },
+    "artifactHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "blockedFrom": {
+      "type": "string",
+      "enum": [
+        "refined",
+        "planned",
+        "implementing",
+        "verifying"
+      ]
+    },
+    "progress": {
+      "$ref": "#/$defs/progress"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "codegraph": {
+      "$ref": "#/$defs/codegraph"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "then": {
+        "required": [
+          "projectRoot",
+          "workItemId",
+          "requirementSource",
+          "artifactPath",
+          "artifactStatus",
+          "artifactHash",
+          "progress",
+          "codegraph"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "transitioned",
+              "unchanged"
+            ]
+          }
+        }
+      },
+      "else": {
+        "required": [
+          "message"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed",
+        "pending",
+        "total"
+      ],
+      "properties": {
+        "completed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "codegraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "cliAvailable",
+        "indexPresent",
+        "statusHealthy",
+        "rootMatches",
+        "synchronization",
+        "watcherState",
+        "pendingChanges",
+        "reindexRecommended"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "required",
+            "preferred"
+          ]
+        },
+        "cliAvailable": {
+          "type": "boolean"
+        },
+        "indexPresent": {
+          "type": "boolean"
+        },
+        "statusHealthy": {
+          "type": "boolean"
+        },
+        "rootMatches": {
+          "type": "boolean"
+        },
+        "synchronization": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "current",
+            "stale"
+          ]
+        },
+        "watcherState": {
+          "const": "not_reported"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "indexState": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pendingChanges": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reindexRecommended": {
+          "type": "boolean"
+        },
+        "problem": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

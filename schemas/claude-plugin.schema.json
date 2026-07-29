@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://higurashi-loop.local/schemas/claude-plugin.schema.json",
+  "title": "Generated Higurashi Claude Code plugin manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "author",
+    "description",
+    "name",
+    "version"
+  ],
+  "properties": {
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "const": "Higurashi Loop contributors"
+        }
+      }
+    },
+    "description": {
+      "type": "string",
+      "pattern": "^Higurashi-Generated: generator=higurashi "
+    },
+    "name": {
+      "const": "higurashi-loop"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "codegraph": {
+      "args": [
+        "serve",
+        "--mcp",
+        "--path",
+        "${CLAUDE_PROJECT_DIR}"
+      ],
+      "command": "codegraph",
+      "env": {
+        "HIGURASHI_GENERATED": "{{HIGURASHI_GENERATED}}"
+      },
+      "type": "stdio"
+    }
+  }
+}

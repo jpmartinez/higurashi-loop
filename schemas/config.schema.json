@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://higurashi-loop.invalid/schemas/config.schema.json",
+  "title": "Higurashi project configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "workItems": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "idPattern": {
+          "type": "string",
+          "minLength": 1,
+          "default": "^[A-Z][A-Z0-9]*(-[A-Z0-9][A-Z0-9._-]*)$"
+        },
+        "requirementSources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [
+            "docs/higurashi/requirements"
+          ]
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "directory": {
+          "type": "string",
+          "minLength": 1,
+          "default": "docs/higurashi"
+        }
+      }
+    },
+    "loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxApplyBatchesPerRun": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32,
+          "default": 8
+        },
+        "maxRepairAttempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1
+        },
+        "requireProgressAfterEveryBatch": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "codegraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "required",
+            "preferred"
+          ],
+          "default": "required"
+        },
+        "autoInitializeProjectIndex": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "instructionFiles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [
+            "AGENTS.md",
+            "CLAUDE.md"
+          ]
+        },
+        "authoritativeFiles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "normalizationCommands": {
+          "$ref": "#/$defs/commands",
+          "default": []
+        },
+        "requiredCommands": {
+          "$ref": "#/$defs/commands",
+          "default": []
+        },
+        "candidateFormatCommands": {
+          "$ref": "#/$defs/commands",
+          "default": []
+        }
+      }
+    },
+    "runners": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "opencode": {
+          "$ref": "#/$defs/runner"
+        },
+        "claudeCode": {
+          "$ref": "#/$defs/runner"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "argv",
+          "timeoutSeconds"
+        ],
+        "properties": {
+          "argv": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "models": {
+          "$ref": "#/$defs/modelAssignments"
+        }
+      }
+    },
+    "modelAssignments": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "orchestrator": {
+          "$ref": "#/$defs/model"
+        },
+        "refine": {
+          "$ref": "#/$defs/model"
+        },
+        "plan": {
+          "$ref": "#/$defs/model"
+        },
+        "apply": {
+          "$ref": "#/$defs/model"
+        },
+        "verifyContract": {
+          "$ref": "#/$defs/model"
+        },
+        "verifyRisk": {
+          "$ref": "#/$defs/model"
+        }
+      }
+    },
+    "model": {
+      "type": "string",
+      "pattern": "^(inherit|[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._:/+-]*(#[A-Za-z0-9][A-Za-z0-9._+-]*)?)$",
+      "default": "inherit"
+    }
+  }
+}

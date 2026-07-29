@@ -1,0 +1,40 @@
+---
+name: refine
+description: Refine one ambiguous work item into a confirmed Higurashi contract. Use only when explicitly invoked with a work-item ID.
+disable-model-invocation: true
+---
+
+# Higurashi Loop refinement
+
+Run in the main conversation and accept one opaque work-item ID with an
+optional `--from <project-relative-path>` from `$ARGUMENTS`. The user may
+instead paste a requirement in the conversation. Load the project-local
+`higurashi-refine` skill as the canonical contract. If it is unavailable, stop
+and report an incomplete adapter install.
+
+Do not alter control documents, generated ownership markers, or existing tests to bypass required behavior; report a blocker instead.
+
+1. Run `higurashi inspect <ID> --json`. If it is not `kind: ready`, import only
+   an explicitly supplied file or pasted requirement. For a file, run
+   `higurashi requirements import <ID> --from <PATH> --json`. For pasted text,
+   show the exact text, require confirmation that it is authoritative, and pass
+   it verbatim to `higurashi requirements import <ID> --stdin --json`. Never
+   paraphrase, infer, search for, replace, or silently select a requirement.
+   Stop on conflict. Re-inspect and require `kind: ready`.
+2. Invoke `higurashi-loop:higurashi-refine` in `questions` stage with the exact
+   inspection result and requirement source. Present its single question batch,
+   including every recommended answer, and accept one free-text response.
+3. Invoke the same agent in `draft` stage with that response. If it returns a
+   follow-up batch, present it and accept one more free-text response. Permit at most one follow-up, then require a complete draft or stop unresolved.
+4. Show the complete draft and request explicit confirmation. Do not treat
+   silence, an unrelated response, or partial answer acceptance as confirmation.
+5. Only after confirmation, invoke the agent in `persist` stage with the exact
+   confirmed contract. Require it to re-inspect, create only the returned
+   artifact path with `Status: refined`, and return a fresh inspection hash.
+6. Return the artifact path and hash plus:
+   `/higurashi-loop:deliver <ID>`.
+
+Never directly write a requirement, configuration, or artifact from the
+coordinator; the deterministic import command is the only permitted bootstrap
+mutation. Never persist raw dialogue, plan, implement, commit, push, or invoke
+the delivery agents.

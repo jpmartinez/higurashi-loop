@@ -1,0 +1,17 @@
+---
+description: Deliver one work item through the guarded Higurashi loop
+agent: higurashi-orchestrator
+subtask: false
+---
+
+Run the Higurashi delivery workflow for these exact arguments:
+
+`$ARGUMENTS`
+
+Accept only `<WORK-ITEM-ID>`, `<WORK-ITEM-ID> --plan-only`, or
+`<WORK-ITEM-ID> --repair`. Treat the work-item ID as opaque input, never as a
+path or shell fragment. Reject missing, reordered, or additional arguments.
+
+Load the `higurashi-deliver` skill and follow it as the authoritative workflow
+contract. This command is the only automatic entry point; do not modify a
+default OpenCode agent or workflow.

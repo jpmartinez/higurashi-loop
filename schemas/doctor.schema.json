@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://higurashi-loop.invalid/schemas/doctor.schema.json",
+  "title": "Higurashi doctor result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "command",
+    "ok",
+    "kind"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "command": {
+      "const": "doctor"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "codegraph_unavailable",
+        "codegraph_unhealthy",
+        "configuration_missing",
+        "configuration_invalid",
+        "not_git_project",
+        "unsafe_project_root",
+        "invalid_usage"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projectRoot": {
+      "type": "string",
+      "minLength": 1
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "codegraph": {
+      "$ref": "#/$defs/codegraph"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "healthy",
+              "degraded",
+              "codegraph_unavailable",
+              "codegraph_unhealthy"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "projectRoot",
+          "codegraph"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "codegraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "cliAvailable",
+        "indexPresent",
+        "statusHealthy",
+        "rootMatches",
+        "synchronization",
+        "watcherState",
+        "pendingChanges",
+        "reindexRecommended"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "required",
+            "preferred"
+          ]
+        },
+        "cliAvailable": {
+          "type": "boolean"
+        },
+        "indexPresent": {
+          "type": "boolean"
+        },
+        "statusHealthy": {
+          "type": "boolean"
+        },
+        "rootMatches": {
+          "type": "boolean"
+        },
+        "synchronization": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "current",
+            "stale"
+          ]
+        },
+        "watcherState": {
+          "const": "not_reported"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "indexState": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pendingChanges": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reindexRecommended": {
+          "type": "boolean"
+        },
+        "problem": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

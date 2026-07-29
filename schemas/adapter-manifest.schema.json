@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://higurashi-loop.invalid/schemas/adapter-manifest.schema.json",
+  "title": "Higurashi generated-file manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "generated",
+    "schemaVersion",
+    "files"
+  ],
+  "properties": {
+    "generated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generator"
+      ],
+      "properties": {
+        "generator": {
+          "const": "higurashi"
+        }
+      }
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "adapter",
+        "templateId",
+        "sourceHash",
+        "contentHash",
+        "generatorVersion"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!\\.\\.?/).+"
+        },
+        "adapter": {
+          "type": "string",
+          "enum": [
+            "opencode",
+            "claude-code"
+          ]
+        },
+        "templateId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "generatorVersion": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
