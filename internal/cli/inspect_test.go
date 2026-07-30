@@ -224,7 +224,7 @@ func TestInspectBlockedWithoutHandoffRequiresDurableHandoff(t *testing.T) {
 func TestInspectValidHandoffReturnsRepairReadyWithOneCommand(t *testing.T) {
 	repository := newGitRepository(t)
 	writeInspectFixture(t, repository)
-	writeArtifact(t, repository, blockedCLIDocument(false, 0))
+	writeArtifact(t, repository, blockedCLIDocument(true, 0))
 	writeFile(
 		t,
 		filepath.Join(

@@ -298,6 +298,14 @@ func runInspect(
 			if document.Status == "blocked" {
 				switch validation.State {
 				case "ready":
+					if planErr := repair.ValidatePlan(
+						document,
+						validation.Handoff,
+					); planErr != nil {
+						envelope.Kind = "repair_plan_required"
+						envelope.Message = planErr.Error()
+						break
+					}
 					envelope.Kind = "repair_ready"
 					authorizationRequired = true
 					envelope.AuthorizationRequired =

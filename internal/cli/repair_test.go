@@ -44,6 +44,48 @@ func TestRepairAuthorizeRejectsHandoffWithoutPendingRepairTasks(t *testing.T) {
 	}
 }
 
+func TestInspectReadyHandoffWithoutPendingRepairTasksRequiresRepairPlan(
+	t *testing.T,
+) {
+	repository := newGitRepository(t)
+	writeInspectFixture(t, repository)
+	writeArtifact(t, repository, blockedCLIDocument(false, 0))
+	writeFile(
+		t,
+		filepath.Join(
+			repository,
+			"docs",
+			"higurashi",
+			"WORK-123-repair-1.md",
+		),
+		validCLIRepairHandoff("ready", 1),
+	)
+
+	exitCode, result, stderr := runInspectJSON(t, repository, "WORK-123")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d\nstderr:\n%s", exitCode, stderr)
+	}
+	if result.Kind != "repair_plan_required" {
+		t.Errorf("kind = %q, want repair_plan_required", result.Kind)
+	}
+	if result.HandoffValidation != "ready" {
+		t.Errorf("handoffValidation = %q, want ready", result.HandoffValidation)
+	}
+	if result.AuthorizationRequired == nil || *result.AuthorizationRequired {
+		t.Errorf(
+			"authorizationRequired = %v, want false",
+			result.AuthorizationRequired,
+		)
+	}
+	if result.NextCommand != "" {
+		t.Errorf("nextCommand = %q, want none", result.NextCommand)
+	}
+	if !strings.Contains(result.Message, "no new pending repair tasks") {
+		t.Errorf("message = %q", result.Message)
+	}
+}
+
 func TestRepairAuthorizeTransitionsAndConsumesExactlyOnce(t *testing.T) {
 	repository := newGitRepository(t)
 	writeInspectFixture(t, repository)

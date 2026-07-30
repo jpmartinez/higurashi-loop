@@ -94,7 +94,7 @@ place it in a directory on `PATH`.
 For example, on Linux amd64:
 
 ```text
-version=v0.1.0-alpha.3
+version=v0.1.0-alpha.4
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/higurashi_${version}_linux_amd64.tar.gz"
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/checksums.txt"
 sha256sum --check --ignore-missing checksums.txt
@@ -135,7 +135,7 @@ mise exec -- go build -o ./bin/higurashi ./cmd/higurashi
 ### Install into the Go binary directory
 
 ```text
-go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.3
+go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.4
 ```
 
 This installs `higurashi` into `GOBIN`, or into the current Go environment's
@@ -254,11 +254,13 @@ escapes fail closed. See the artifact contract in
 A blocked artifact uses a machine-owned `Repair-Round` field; legacy artifacts
 without it are read as round zero. Inspection computes the next sidecar path
 deterministically and returns `handoff_required` when the sidecar is absent or
-invalid, `repair_ready` when a valid ready handoff exists, or
-`repair_recovery_required` when an interrupted authorization left a consumed
-handoff and blocked artifact. JSON includes the current round, handoff path and
-validation, blocker count, candidate strategy, authorization requirement, and
-the one exact next command when authorization or recovery is possible.
+invalid, `repair_plan_required` when a valid ready handoff still lacks exactly
+one matching pending repair task per blocker, `repair_ready` only when both the
+handoff and repair plan are complete, or `repair_recovery_required` when an
+interrupted authorization left a consumed handoff and blocked artifact. JSON
+includes the current round, handoff path and validation, blocker count,
+candidate strategy, authorization requirement, and the one exact next command
+only when authorization or recovery is actually possible.
 
 Guard and update an existing artifact status:
 
@@ -428,7 +430,10 @@ runner conversation. The coordinator re-enters PRECHECK with the same work-item
 ID and options, reloads durable state and configuration, and continues without
 requiring the slash command again. Retry never authorizes a repair round; an
 explicit `--repair` invocation is still required when inspection reports
-`repair_ready`.
+`repair_ready`. When inspection reports `repair_plan_required`, the coordinator
+reruns PLAN once from the durable handoff, re-inspects, and exposes repair
+authorization only after the plan is complete. A transient planner failure
+remains non-terminal and can be retried in the same conversation.
 `--plan-only` creates or inspects the plan and stops before APPLY. The
 `higurashi` and `codegraph` executables must be available to OpenCode through
 `PATH`.

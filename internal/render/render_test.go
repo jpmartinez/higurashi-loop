@@ -199,6 +199,10 @@ func TestOpenCodeRoleContracts(t *testing.T) {
 		"Do not invoke Higurashi subagents",
 		"run workflow-state mutations",
 		"or edit files\nin conversation mode",
+		"`repair_plan_required`",
+		"invoke PLAN exactly once",
+		"repair authorization while repair planning is required",
+		"require `repair_ready`",
 	)
 	if strings.Contains(orchestrator, "Reject every other") {
 		t.Error("orchestrator rejects conversational input instead of answering it")
@@ -211,7 +215,7 @@ func TestOpenCodeRoleContracts(t *testing.T) {
 		"edit: ask",
 		"task: deny",
 		"For `kind: ready`",
-		"For `kind: repair_ready`",
+		"For `kind: repair_plan_required`",
 		"repair-r<round>-<blocker-id>",
 		"artifact status `refined`",
 		"refined` to `planned",
@@ -417,6 +421,10 @@ func TestClaudeRoleContracts(t *testing.T) {
 		"loop.maxRepairAttempts",
 		"--repair",
 		"repair_recovery_required",
+		"`repair_plan_required`",
+		"invoke PLAN exactly once",
+		"repair authorization while repair planning is required",
+		"require `repair_ready`",
 		"artifact status is `refined`",
 		"/higurashi-loop:refine",
 	)
@@ -485,7 +493,10 @@ func TestClaudeRoleContracts(t *testing.T) {
 		"Never\ninvoke `higurashi repair authorize`",
 	)
 	planner := files["agents/higurashi-plan.md"]
-	requireContains(t, planner, "`Permitted commands:`")
+	requireContains(t, planner,
+		"`Permitted commands:`",
+		"For `repair_plan_required`",
+	)
 	for _, name := range []string{
 		"agents/higurashi-verify-contract.md",
 		"agents/higurashi-verify-risk.md",

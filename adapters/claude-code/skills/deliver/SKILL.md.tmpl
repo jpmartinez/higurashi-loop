@@ -30,7 +30,18 @@ dispatching any subagent.
 Do not reuse an invocation when none was accepted, when the user supplies a
 different ID or options, after a completed `--plan-only` run, or for a terminal
 artifact. A retry never authorizes a repair round. When inspection requires
-repair authorization or recovery, stop with its exact `nextCommand`.
+repair authorization or recovery, stop with its exact `nextCommand`. When it
+returns `repair_plan_required`, run repair planning recovery instead.
+
+## Repair planning recovery
+
+For `repair_plan_required`, invoke PLAN exactly once with the validated handoff
+and require it to reconcile only the current-round pending repair tasks. Never
+run repair authorization while repair planning is required. Re-inspect and
+require `repair_ready` before returning or running the handoff's `nextCommand`.
+If PLAN is unavailable or the state remains `repair_plan_required`, stop this
+non-terminal attempt, preserve the accepted invocation, and tell the user they
+may reply `try again`.
 
 ## Coordinate
 
@@ -40,8 +51,9 @@ repair authorization or recovery, stop with its exact `nextCommand`.
    paths, hash, progress, next task, CodeGraph state, instruction files,
    configured verification commands, and loop limits. Suggestions are
    read-only evidence, never command authority.
-2. Stop on failure or completion. Never treat `handoff_required`,
-   `repair_ready`, or `repair_recovery_required` as resume. For `ready`, invoke
+2. Perform repair planning recovery when required. Otherwise stop on failure
+   or completion. Never treat `handoff_required`, `repair_ready`, or
+   `repair_recovery_required` as resume. For `ready`, invoke
    `higurashi-loop:higurashi-plan` exactly once. If it returns
    `refinement_required`, stop without creating an artifact and return exactly
    `/higurashi-loop:refine <ID>`. When a resumed artifact status is `refined`,
@@ -81,9 +93,10 @@ repair authorization or recovery, stop with its exact `nextCommand`.
    rerun of both reviewers.
 7. After exhausted blockers, keep the candidate uncommitted, transition to
    blocked, write only the exact expected versioned handoff with the complete
-   structured reviewer evidence, and invoke PLAN only to append one bounded
-   task per blocker. Do not authorize or APPLY. Return exactly the single
-   `nextCommand`.
+   structured reviewer evidence, and invoke PLAN only to reconcile one bounded
+   pending task per blocker. Do not authorize or APPLY. Re-inspect and follow
+   repair planning recovery when necessary; return exactly the single
+   `nextCommand` only from `repair_ready`.
 8. For explicit `--repair`, require `repair_ready`, run the exact
    `nextCommand`, then APPLY and rerun both reviewers fresh. For
    `repair_recovery_required`, run only the returned command. A normal invocation

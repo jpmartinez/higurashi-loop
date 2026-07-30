@@ -13,6 +13,7 @@ func TestSchemasAreValidJSON(t *testing.T) {
 		"claude-plugin.schema.json",
 		"config.schema.json",
 		"doctor.schema.json",
+		"inspection.schema.json",
 	}
 
 	for _, test := range tests {

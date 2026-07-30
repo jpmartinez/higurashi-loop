@@ -23,8 +23,9 @@ Require the work-item ID and run `higurashi inspect <ID> --json`.
 - For `resume` with artifact status `refined`, preserve the confirmed contract,
   add the ordered vertical checklist to that exact artifact, inspect again, and
   transition `refined` to `planned` with the exact returned hash.
-- For `repair_ready`, read only the exact validated handoff and append exactly
-  one pending repair task per blocker to the primary artifact.
+- For `repair_plan_required`, read only the exact validated handoff and
+  reconcile exactly one current-round pending repair task per blocker in the
+  primary artifact.
 
 Refuse every other write.
 
@@ -46,10 +47,11 @@ require them.
 Return the artifact path, fresh inspection hash, checklist count, and blockers.
 
 For repair tasks, preserve all completed tasks and existing narrative/evidence
-bytes. Use `repair-r<round>-<blocker-id>`, retain exact `Blocker-ID`, begin with
-the exact reproduction, and copy the minimum acceptance condition. Never
-re-plan completed work, change machine-owned state, edit or consume the handoff,
-or invoke repair authorization.
+bytes. Add missing tasks or correct only incomplete current-round repair tasks.
+Use `repair-r<round>-<blocker-id>`, retain exact `Blocker-ID`, begin with the
+exact reproduction, and copy the minimum acceptance condition. Never re-plan
+completed work, change machine-owned state, edit or consume the handoff, or
+invoke repair authorization.
 
 Do not transition except for the exact confirmed `refined` to `planned`
 continuation. Never modify the confirmed refinement contract.

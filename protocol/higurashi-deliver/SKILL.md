@@ -44,9 +44,9 @@ sentence: "Do not alter control documents, generated ownership markers, or exist
 2. Stop on invalid, unknown, canceled, conflict, unsafe, or unavailable results.
 3. Return immediately when the result is `complete`.
 4. Use `ready` for PLAN and `resume` to continue from the returned status and
-   next task. Treat `handoff_required`, `repair_ready`, and
-   `repair_recovery_required` as distinct durable states; never treat them as a
-   normal resume.
+   next task. Treat `handoff_required`, `repair_plan_required`, `repair_ready`,
+   and `repair_recovery_required` as distinct durable states; never treat them
+   as a normal resume.
 5. Carry forward the exact artifact path, SHA-256 hash, progress counts, loop
    limits, warnings, and CodeGraph state from the result.
 
@@ -67,7 +67,23 @@ subagent.
 Do not reuse an invocation when none was accepted, when the user supplies a
 different ID or options, after a completed `--plan-only` run, or for a terminal
 artifact. A retry never authorizes a repair round. If inspection requires
-repair authorization or recovery, stop with its exact `nextCommand`.
+repair authorization or recovery, stop with its exact `nextCommand`. If it
+returns `repair_plan_required`, run repair planning recovery instead.
+
+## REPAIR PLAN RECOVERY
+
+`repair_plan_required` means the handoff is valid but its current-round pending
+repair tasks are missing or do not exactly match the blockers. For this state,
+invoke PLAN exactly once to reconcile only those repair tasks from the validated
+handoff.
+Preserve completed tasks, narrative, evidence, machine-owned fields, and the
+handoff itself.
+
+Never run repair authorization while repair planning is required. Re-inspect
+and require `repair_ready` before reporting or executing the handoff's
+`nextCommand`. If PLAN is unavailable or inspection still returns
+`repair_plan_required`, stop this non-terminal attempt, preserve the accepted
+invocation, and tell the user they may reply `try again`.
 
 ## REFINE
 
@@ -87,7 +103,7 @@ uses `higurashi transition` with the exact current hash to enter `planned`.
 
 ## PLAN
 
-Run PLAN only for `ready` or `refined`.
+Run PLAN only for `ready`, `refined`, or `repair_plan_required`.
 
 1. Resolve the requirement and relevant project instructions.
 2. Use CodeGraph to identify seams, callers, dependencies, and blast radius.
@@ -184,7 +200,7 @@ When a blocked verification run cannot repair all blockers:
 2. Transition to `blocked`, then persist every blocker in the exact expected
    versioned handoff path returned by inspection. Use the sidecar contract,
    stable deduplicated blocker IDs, and the exact `Next-Command`.
-3. Invoke PLAN only to append one bounded pending repair task per validated
+3. Invoke PLAN only to reconcile one bounded pending repair task per validated
    blocker. Do not authorize or implement those tasks.
 4. Stop with exactly the `nextCommand` returned by inspection. Never reconstruct
    missing reviewer evidence in a later session.
@@ -207,6 +223,8 @@ finish the interrupted deterministic transition. A normal resume or
 Report the work-item ID, final status, artifact path and hash, completed and
 pending counts, exact verification evidence, blockers, warnings, and the next
 legal action. A blocked terminal response must contain exactly one executable
-next command. Do not recommend committing a blocked uncommitted candidate. Do
-not commit, push, publish, release, or create remote changes unless the user
-separately authorizes that action.
+next command. A non-terminal `repair_plan_required` response instead offers the
+same-conversation retry reply and never exposes the authorization command. Do
+not recommend committing a blocked uncommitted candidate. Do not commit, push,
+publish, release, or create remote changes unless the user separately
+authorizes that action.

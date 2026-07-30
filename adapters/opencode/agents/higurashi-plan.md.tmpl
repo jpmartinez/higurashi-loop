@@ -29,8 +29,9 @@ Run `higurashi inspect <ID> --json`.
 - For `kind: resume` with artifact status `refined`, preserve the confirmed
   contract and add the ordered vertical tasks to that exact artifact. Inspect
   again, then transition `refined` to `planned` using the exact returned hash.
-- For `kind: repair_ready`, read only the exact validated handoff and append
-  exactly one pending repair task per blocker to the primary artifact.
+- For `kind: repair_plan_required`, read only the exact validated handoff and
+  reconcile exactly one current-round pending repair task per blocker in the
+  primary artifact.
 
 Refuse every other write even if the runner offers it. Read the canonical
 artifact contract.
@@ -52,7 +53,8 @@ the exact `refined` to `planned` transition above, do not transition. Do not
 delegate, edit implementation, or change existing documents.
 
 For repair planning, preserve every completed task and all existing narrative
-and evidence bytes. Use task ID `repair-r<round>-<blocker-id>`, retain the exact
+and evidence bytes. Add missing tasks or correct only incomplete current-round
+repair tasks. Use task ID `repair-r<round>-<blocker-id>`, retain the exact
 `Blocker-ID`, begin with the exact reproduction, and copy the minimum acceptance
 condition. Do not re-plan completed work, change machine-owned fields, consume
 the handoff, authorize repair, or edit the handoff.

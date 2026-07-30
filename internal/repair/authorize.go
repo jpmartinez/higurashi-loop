@@ -14,6 +14,7 @@ var (
 	ErrAuthorization = errors.New("repair authorization rejected")
 	ErrConflict      = errors.New("repair authorization conflict")
 	ErrPartial       = errors.New("repair authorization partially applied")
+	ErrPlan          = errors.New("repair plan incomplete")
 )
 
 type Authorization struct {
@@ -83,8 +84,8 @@ func authorizeWithWriter(
 			ErrAuthorization,
 		)
 	}
-	if err := validateRepairTasks(snapshot.Document, handoff.Document); err != nil {
-		return Authorization{}, err
+	if err := ValidatePlan(snapshot.Document, handoff.Document); err != nil {
+		return Authorization{}, fmt.Errorf("%w: %v", ErrAuthorization, err)
 	}
 
 	recovered := handoff.Document.Status == "consumed"
@@ -164,7 +165,10 @@ func authorizeWithWriter(
 	}, nil
 }
 
-func validateRepairTasks(
+// ValidatePlan requires exactly one pending repair task for every blocker in
+// the ready handoff. It is read-only so inspection and authorization share the
+// same repair-readiness decision.
+func ValidatePlan(
 	document artifact.Document,
 	handoff Document,
 ) error {
@@ -178,13 +182,13 @@ func validateRepairTasks(
 	if len(pending) == 0 {
 		return fmt.Errorf(
 			"%w: no new pending repair tasks were appended",
-			ErrAuthorization,
+			ErrPlan,
 		)
 	}
 	if len(pending) != len(handoff.Blockers) {
 		return fmt.Errorf(
 			"%w: expected exactly one pending repair task per blocker",
-			ErrAuthorization,
+			ErrPlan,
 		)
 	}
 	for _, blocker := range handoff.Blockers {
@@ -193,7 +197,7 @@ func validateRepairTasks(
 		if !ok {
 			return fmt.Errorf(
 				"%w: missing pending task %q for blocker %q",
-				ErrAuthorization,
+				ErrPlan,
 				taskID,
 				blocker.ID,
 			)
@@ -207,7 +211,7 @@ func validateRepairTasks(
 			if !strings.Contains(task.Text, evidence) {
 				return fmt.Errorf(
 					"%w: task %q is missing exact %q",
-					ErrAuthorization,
+					ErrPlan,
 					taskID,
 					evidence,
 				)

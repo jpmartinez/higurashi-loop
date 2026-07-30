@@ -414,6 +414,7 @@ ready
 resume
 complete
 handoff_required
+repair_plan_required
 repair_ready
 repair_recovery_required
 invalid_repair_state
@@ -719,8 +720,8 @@ Idempotently setting the current status succeeds without writing.
 
 ### 9.2 PLAN
 
-PLAN runs for `ready` or `refined`, plus append-only repair planning from a
-validated `repair_ready` handoff.
+PLAN runs for `ready` or `refined`, plus bounded repair-plan recovery from a
+validated `repair_plan_required` handoff.
 
 The planner:
 
@@ -1381,8 +1382,11 @@ feat: add Claude Code adapter
 
 Implemented behaviors:
 
-- blocked inspection distinguishes `handoff_required`, `repair_ready`, and
-  recoverable consumed-handoff state;
+- blocked inspection distinguishes `handoff_required`,
+  `repair_plan_required`, `repair_ready`, and recoverable consumed-handoff
+  state;
+- authorization readiness requires a valid ready handoff and exactly one
+  matching pending repair task per blocker;
 - `Repair-Round` determines the versioned sidecar path;
 - strict handoff validation rejects missing fields, placeholders, duplicate
   blocker IDs, mismatched work items/rounds, incorrect commands, and reuse;

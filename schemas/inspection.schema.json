@@ -26,6 +26,11 @@
         "ready",
         "resume",
         "complete",
+        "handoff_required",
+        "repair_plan_required",
+        "repair_ready",
+        "repair_recovery_required",
+        "invalid_repair_state",
         "unknown",
         "canceled",
         "invalid_artifact",
@@ -84,6 +89,38 @@
         "verifying"
       ]
     },
+    "repairRound": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "handoffPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "handoffValidation": {
+      "type": "string",
+      "enum": [
+        "not_required",
+        "missing",
+        "invalid",
+        "ready",
+        "consumed"
+      ]
+    },
+    "blockerCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "authorizationRequired": {
+      "type": "boolean"
+    },
+    "nextCommand": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidateStrategy": {
+      "const": "uncommitted"
+    },
     "progress": {
       "$ref": "#/$defs/progress"
     },
@@ -131,7 +168,12 @@
             "enum": [
               "ready",
               "resume",
-              "complete"
+              "complete",
+              "handoff_required",
+              "repair_plan_required",
+              "repair_ready",
+              "repair_recovery_required",
+              "invalid_repair_state"
             ]
           }
         }
@@ -148,7 +190,12 @@
           "kind": {
             "enum": [
               "resume",
-              "complete"
+              "complete",
+              "handoff_required",
+              "repair_plan_required",
+              "repair_ready",
+              "repair_recovery_required",
+              "invalid_repair_state"
             ]
           }
         },
@@ -178,6 +225,71 @@
         "properties": {
           "artifactStatus": {
             "const": "complete"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "repair_plan_required"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "message",
+          "repairRound",
+          "handoffPath",
+          "handoffValidation",
+          "blockerCount",
+          "authorizationRequired"
+        ],
+        "properties": {
+          "handoffValidation": {
+            "const": "ready"
+          },
+          "authorizationRequired": {
+            "const": false
+          }
+        },
+        "not": {
+          "required": [
+            "nextCommand"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "repair_ready"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "repairRound",
+          "handoffPath",
+          "handoffValidation",
+          "blockerCount",
+          "authorizationRequired",
+          "nextCommand"
+        ],
+        "properties": {
+          "handoffValidation": {
+            "const": "ready"
+          },
+          "authorizationRequired": {
+            "const": true
           }
         }
       }
