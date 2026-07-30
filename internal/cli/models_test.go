@@ -75,7 +75,7 @@ func TestModelsSetPersistsAssignmentsAndRegeneratesAgents(t *testing.T) {
 			"agents",
 			"higurashi-apply.md",
 		),
-		"model: openai/coding-model#max\n",
+		"model: openai/coding-model\nvariant: max\n",
 	)
 	assertFileContains(
 		t,

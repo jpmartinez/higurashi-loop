@@ -28,7 +28,7 @@ func TestBuildConfiguredAddsRoleSpecificOpenCodeModels(t *testing.T) {
 	}
 	wants := map[string]string{
 		".opencode/agents/higurashi-orchestrator.md": "model: openai/control-model\n",
-		".opencode/agents/higurashi-apply.md":        "model: openai/coding-model#max\n",
+		".opencode/agents/higurashi-apply.md":        "model: openai/coding-model\nvariant: max\n",
 		".opencode/agents/higurashi-verify-risk.md":  "model: other/risk-model\n",
 	}
 	for _, file := range bundle.Files {

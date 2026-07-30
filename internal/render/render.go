@@ -357,16 +357,23 @@ func modelForRole(models config.ModelAssignments, role string) string {
 	}
 }
 
-func addOpenCodeModel(source []byte, model string) ([]byte, error) {
-	if model == "inherit" {
+func addOpenCodeModel(source []byte, reference string) ([]byte, error) {
+	if reference == "inherit" {
 		return append([]byte(nil), source...), nil
 	}
 	if !bytes.HasPrefix(source, []byte("---\n")) {
 		return nil, errors.New("OpenCode agent template has no YAML frontmatter")
 	}
-	line := []byte("---\nmodel: " + model + "\n")
-	content := make([]byte, 0, len(source)+len(line))
-	content = append(content, line...)
+	model, variant := config.SplitModelReference(reference)
+	frontmatter := []byte("---\nmodel: " + model + "\n")
+	if variant != "" {
+		frontmatter = append(
+			frontmatter,
+			[]byte("variant: "+variant+"\n")...,
+		)
+	}
+	content := make([]byte, 0, len(source)+len(frontmatter))
+	content = append(content, frontmatter...)
 	content = append(content, source[len("---\n"):]...)
 	return content, nil
 }

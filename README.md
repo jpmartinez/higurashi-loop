@@ -94,7 +94,7 @@ place it in a directory on `PATH`.
 For example, on Linux amd64:
 
 ```text
-version=v0.1.0-alpha.4
+version=v0.1.0-alpha.5
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/higurashi_${version}_linux_amd64.tar.gz"
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/checksums.txt"
 sha256sum --check --ignore-missing checksums.txt
@@ -135,7 +135,7 @@ mise exec -- go build -o ./bin/higurashi ./cmd/higurashi
 ### Install into the Go binary directory
 
 ```text
-go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.4
+go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.5
 ```
 
 This installs `higurashi` into `GOBIN`, or into the current Go environment's
@@ -347,12 +347,13 @@ with different prompts and permissions even though they use the same model.
 
 Assignments are stored under `runners.opencode.models` in
 `.higurashi/config.json`. The value `inherit` leaves a role on OpenCode's
-active/default model. Effort flags compile to OpenCode's native
-`provider/model#variant` reference; setting an effort to `inherit` clears that
-role's explicit variant. `models set` preserves unspecified roles, validates
-every value as a safe model reference, preflights generated-file ownership,
-atomically replaces the configuration, and regenerates Higurashi-owned agent
-files. It refuses locally modified or user-owned generated targets.
+active/default model. Higurashi stores an explicit effort as
+`provider/model#variant`, then renders it into OpenCode's separate `model:` and
+`variant:` agent fields. Setting an effort to `inherit` clears that role's
+explicit variant. `models set` preserves unspecified roles, validates every
+value as a safe model reference, preflights generated-file ownership, atomically
+replaces the configuration, and regenerates Higurashi-owned agent files. It
+refuses locally modified or user-owned generated targets.
 
 `models validate` is read-only and checks every explicit assignment against the
 models and variants returned by `opencode models --verbose`. Both `show` and
