@@ -189,7 +189,20 @@ func TestOpenCodeRoleContracts(t *testing.T) {
 		"exact expected versioned repair\nhandoff",
 		"artifact status is `refined`",
 		"/higurashi-refine",
+		"Classify each user message before starting delivery",
+		"Answer questions directly",
+		"propose concrete changes",
+		"Do not require a work-item invocation",
+		"to discuss, inspect, or propose",
+		"Start delivery only for",
+		"read-only tools",
+		"Do not invoke Higurashi subagents",
+		"run workflow-state mutations",
+		"or edit files\nin conversation mode",
 	)
+	if strings.Contains(orchestrator, "Reject every other") {
+		t.Error("orchestrator rejects conversational input instead of answering it")
+	}
 
 	planner := files[".opencode/agents/higurashi-plan.md"]
 	requireContains(t, planner,

@@ -68,12 +68,15 @@ reopened unless implementation evidence proves them unworkable.
 13. **Runner-session retry:** after a correctable non-terminal stop, a clear
     retry reply re-enters PRECHECK for the same accepted invocation; it never
     authorizes a repair round or bypasses durable inspection.
-14. **Skill generation:** no dynamic generation in the first release.
-15. **Migration strategy:** reproduce proven behavior through generic names and
+14. **Coordinator conversation:** non-invocation input may receive direct
+    answers, read-only inspection, and concrete change proposals without
+    entering delivery or mutating workflow state.
+15. **Skill generation:** no dynamic generation in the first release.
+16. **Migration strategy:** reproduce proven behavior through generic names and
     interfaces; do not copy project-specific policy.
-15. **Isolation:** the new project does not modify or install files into any
+17. **Isolation:** the new project does not modify or install files into any
     existing consumer repository during development.
-16. **Development toolchain:** project-local mise configuration pins the
+18. **Development toolchain:** project-local mise configuration pins the
     minimum supported Go release used for local development.
 
 ## 3. Scope

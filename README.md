@@ -94,7 +94,7 @@ place it in a directory on `PATH`.
 For example, on Linux amd64:
 
 ```text
-version=v0.1.0-alpha.2
+version=v0.1.0-alpha.3
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/higurashi_${version}_linux_amd64.tar.gz"
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/checksums.txt"
 sha256sum --check --ignore-missing checksums.txt
@@ -135,7 +135,7 @@ mise exec -- go build -o ./bin/higurashi ./cmd/higurashi
 ### Install into the Go binary directory
 
 ```text
-go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.2
+go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.3
 ```
 
 This installs `higurashi` into `GOBIN`, or into the current Go environment's
@@ -412,6 +412,14 @@ contract, and writes a `Status: refined` artifact only after explicit
 confirmation. It never changes the requirement source or persists raw dialogue.
 The following delivery invocation preserves that confirmed contract, adds the
 TDD checklist, and transitions it to `planned`.
+
+The OpenCode coordinator also supports ordinary conversation. Any message that
+is not an exact delivery invocation or a valid session retry is handled as a
+question or proposal: the coordinator may explain the current behavior,
+inspect the project with read-only tools, identify tradeoffs, and suggest
+concrete changes or work-item acceptance criteria. It does not invoke delivery
+subagents, mutate workflow state, or edit files in this mode. Starting
+implementation still requires an exact work-item invocation.
 
 The normal delivery form resumes an existing durable artifact automatically.
 When a normal delivery stops on a correctable, non-terminal blocker, resolve
