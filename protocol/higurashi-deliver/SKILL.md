@@ -54,6 +54,21 @@ Use CodeGraph before broad filesystem exploration for structure, call flow,
 dependencies, or impact. Use it again before editing named symbols. Treat graph
 results as read-only evidence subordinate to project instructions.
 
+## RETRY
+
+Remember the exact accepted invocation for the current runner conversation.
+After stopping a non-terminal normal delivery, preserve it for retry.
+A clear retry reply such as
+`try again`, `retry`, or `continue` means: restart PRECHECK for the same work-item ID and original runner options.
+Run the workflow directly rather than recursively invoking a runner command.
+Re-inspect durable state and reload configuration before dispatching any
+subagent.
+
+Do not reuse an invocation when none was accepted, when the user supplies a
+different ID or options, after a completed `--plan-only` run, or for a terminal
+artifact. A retry never authorizes a repair round. If inspection requires
+repair authorization or recovery, stop with its exact `nextCommand`.
+
 ## REFINE
 
 REFINE is an explicit, optional workflow. For a new work item that is too
@@ -96,7 +111,9 @@ Do not implement during PLAN.
 Run APPLY only from `planned` or `implementing`.
 
 1. Run `higurashi config validate --json` to resolve project instruction files
-   and configured verification commands.
+   and configured verification commands. Also run
+   `higurashi verification suggest --json`; suggestions are read-only evidence,
+   never command authority.
 2. Transition `planned` to `implementing`.
 3. Dispatch a fresh writer for exactly one task: the first pending task returned
    by `higurashi inspect`.
@@ -107,8 +124,20 @@ Run APPLY only from `planned` or `implementing`.
    task-local red, green, and check commands, applicable configured verification
    commands, and bounded read-only diff/status commands when needed.
    For a legacy task without the labeled clause, use only exact executable commands
-   explicitly named in its failing or passing evidence; stop if those are
-   insufficient. Bash permission is not command authority.
+   explicitly named in its failing or passing evidence or returned by
+   `higurashi config validate --json`. Configured commands are command authority.
+   A configured command may run a broader suite than the task's
+   preferred focused check when it deterministically covers the required
+   evidence. Include that exact configured command in `Permitted commands:`.
+   Do not block for a missing task-local command when an applicable configured command covers the required evidence.
+   Bash permission is not command authority.
+   When command authority is still missing after checking configuration:
+   Run `higurashi verification suggest --json` only when no configured command covers the missing evidence.
+   Report the missing evidence, `.higurashi/config.json` as the user-owned
+   configuration, and any matching suggestion's exact
+   `verification.requiredCommands` argv and timeout. Never edit configuration
+   or treat a suggestion as authorized. End with exactly one executable next
+   command: `higurashi verification suggest`.
 5. Require one vertical TDD batch: failing evidence, minimum implementation,
    focused green evidence, then safe cleanup.
 6. Mark only that task complete and record exact evidence.

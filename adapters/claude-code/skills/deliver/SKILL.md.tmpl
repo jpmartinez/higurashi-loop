@@ -17,12 +17,29 @@ stop and report that the Claude Code adapter installation is incomplete.
 
 Do not alter control documents, generated ownership markers, or existing tests to bypass required behavior; report a blocker instead.
 
+## Session retry
+
+Remember the exact accepted invocation for the current runner conversation.
+After stopping a non-terminal normal delivery, preserve it for retry.
+A clear retry reply such as
+`try again`, `retry`, or `continue` means: restart PRECHECK for the same work-item ID and original runner options.
+Resume by running the coordination loop directly; do not recursively invoke the
+skill command. Re-inspect durable state and reload configuration before
+dispatching any subagent.
+
+Do not reuse an invocation when none was accepted, when the user supplies a
+different ID or options, after a completed `--plan-only` run, or for a terminal
+artifact. A retry never authorizes a repair round. When inspection requires
+repair authorization or recovery, stop with its exact `nextCommand`.
+
 ## Coordinate
 
-1. Run `higurashi inspect <ID> --json` and
-   `higurashi config validate --json`. Use their exact durable status, paths,
-   hash, progress, next task, CodeGraph state, instruction files, configured
-   verification commands, and loop limits.
+1. Run `higurashi inspect <ID> --json`,
+   `higurashi config validate --json`, and
+   `higurashi verification suggest --json`. Use their exact durable status,
+   paths, hash, progress, next task, CodeGraph state, instruction files,
+   configured verification commands, and loop limits. Suggestions are
+   read-only evidence, never command authority.
 2. Stop on failure or completion. Never treat `handoff_required`,
    `repair_ready`, or `repair_recovery_required` as resume. For `ready`, invoke
    `higurashi-loop:higurashi-plan` exactly once. If it returns
@@ -40,10 +57,22 @@ Do not alter control documents, generated ownership markers, or existing tests t
    green, and check commands, applicable configured verification commands, and
    bounded read-only `git diff` or `git status --short` commands when needed.
    For a legacy task without the labeled clause, use only exact executable
-   commands explicitly named in its failing or passing evidence; stop if those
-   are insufficient. Bash permission is not command authority. Require a
-   changed artifact hash and increased completed count. Use
+   commands explicitly named in its failing or passing evidence or returned by
+   `higurashi config validate --json`. Configured commands are command authority.
+   A configured command may run a broader suite than the task's
+   preferred focused check when it deterministically covers the required
+   evidence. Include that exact configured command in `Permitted commands:`.
+   Do not block for a missing task-local command when an applicable configured command covers the required evidence.
+   Bash permission is not command authority. Require a changed artifact hash
+   and increased completed count. Use
    `loop.maxApplyBatchesPerRun`; never substitute `maxTurns` for that limit.
+   When command authority is still missing after checking configuration:
+   Run `higurashi verification suggest --json` only when no configured command covers the missing evidence.
+   Report the missing evidence, `.higurashi/config.json` as the user-owned
+   configuration, and any matching suggestion's exact
+   `verification.requiredCommands` argv and timeout. Do not edit configuration
+   or treat the suggestion as authorized. End with exactly one executable next
+   command: `higurashi verification suggest`.
 5. After zero pending tasks, run configured normalization and verification,
    freeze the diff, and invoke `higurashi-loop:higurashi-verify-contract` and
    `higurashi-loop:higurashi-verify-risk` independently with identical evidence.
@@ -65,6 +94,9 @@ Use only the four Higurashi agents. The coordinator may write only the exact
 expected repair handoff, never implementation or the primary artifact. Never
 create a temporary worktree, recommend committing a blocked candidate, commit,
 or push.
+
+For a non-terminal normal delivery, tell the user they may reply `try again`
+after resolving the blocker.
 
 Use CodeGraph before broad filesystem exploration for structure, call flow,
 dependencies, or impact. Verify the `codegraph` MCP connection and project root

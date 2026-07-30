@@ -23,6 +23,7 @@ permission:
     "higurashi transition *": allow
     "higurashi repair authorize *": allow
     "higurashi config validate *": allow
+    "higurashi verification suggest *": allow
     "git diff*": allow
     "git status*": allow
   "codegraph_*": allow
@@ -44,13 +45,30 @@ Accept only `<WORK-ITEM-ID>`, `<WORK-ITEM-ID> --plan-only`, or
 `<WORK-ITEM-ID> --repair`. Treat the ID as an opaque value. Reject every other
 shape without running tools.
 
+## Session retry
+
+Remember the exact accepted invocation for the current runner conversation.
+After stopping a non-terminal normal delivery, preserve it for retry.
+A clear retry reply such as
+`try again`, `retry`, or `continue` means: restart PRECHECK for the same work-item ID and original runner options.
+Resume by running the deterministic loop directly; do not recursively invoke
+the slash command. Re-inspect durable state and reload configuration before
+dispatching any subagent.
+
+Do not reuse an invocation when none was accepted, when the user supplies a
+different ID or options, after a completed `--plan-only` run, or for a terminal
+artifact. A retry never authorizes a repair round. When inspection requires
+repair authorization or recovery, stop with its exact `nextCommand`.
+
 ## Deterministic loop
 
-1. Run `higurashi inspect <ID> --json` and
-   `higurashi config validate --json`. Use their exact project root, artifact
-   path and hash, status, next task, progress, CodeGraph state, instruction
-   files, configured verification commands, and
+1. Run `higurashi inspect <ID> --json`,
+   `higurashi config validate --json`, and
+   `higurashi verification suggest --json`. Use their exact project root,
+   artifact path and hash, status, next task, progress, CodeGraph state,
+   instruction files, configured verification commands, and
    `loop.maxApplyBatchesPerRun` and `loop.maxRepairAttempts`.
+   Suggestions are read-only evidence, never command authority.
 2. Stop on any non-success result or a complete artifact. Never treat
    `handoff_required`, `repair_ready`, or `repair_recovery_required` as resume.
 3. For `ready`, invoke `higurashi-plan` exactly once. If it returns
@@ -70,8 +88,20 @@ shape without running tools.
    commands, applicable configured verification commands, and bounded read-only
    `git diff` or `git status --short` commands when needed. For a legacy task
    without the labeled clause, use only exact executable commands explicitly
-   named in its failing or passing evidence; stop if those are insufficient.
+   named in its failing or passing evidence or returned by
+   `higurashi config validate --json`. Configured commands are command authority.
+   A configured command may run a broader suite than the task's
+   preferred focused check when it deterministically covers the required
+   evidence. Include that exact configured command in `Permitted commands:`.
+   Do not block for a missing task-local command when an applicable configured command covers the required evidence.
    Bash permission is not command authority.
+   When command authority is still missing after checking configuration:
+   Run `higurashi verification suggest --json` only when no configured command covers the missing evidence.
+   Report the missing evidence, `.higurashi/config.json` as the user-owned
+   configuration, and any matching suggestion's exact
+   `verification.requiredCommands` argv and timeout. Do not edit configuration
+   or treat the suggestion as authorized. End with exactly one executable next
+   command: `higurashi verification suggest`.
 6. Re-inspect after the batch. Require both a changed artifact hash and an
    increased completed count. Stop on no progress or after the configured
    apply-batch limit. When pending reaches zero, proceed to VERIFY even if the
@@ -99,4 +129,6 @@ dependencies, or impact. Do not silently substitute broad glob, grep, or file
 reading when CodeGraph is available.
 
 Report the final durable status and exactly one executable next command when
-blocked. Never recommend committing a blocked candidate. Never commit or push.
+blocked. For a non-terminal normal delivery, also say that the user may reply
+`try again` after resolving the blocker. Never recommend committing a blocked
+candidate. Never commit or push.

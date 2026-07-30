@@ -131,6 +131,15 @@ func Run(
 			options,
 		)
 	}
+	if len(args) >= 1 && args[0] == "verification" {
+		return runVerification(
+			ctx,
+			args[1:],
+			stdout,
+			stderr,
+			options,
+		)
+	}
 	if len(args) >= 2 && args[0] == "config" && args[1] == "requirements" {
 		return runConfigRequirements(
 			ctx,
@@ -337,6 +346,8 @@ Commands:
       Set and validate project requirement sources
   higurashi requirements import WORK-123 (--from PATH | --stdin) [--json]
       Import one durable, project-managed requirement snapshot
+  higurashi verification suggest [--json]
+      Suggest exact project-owned verification commands without executing them
   higurashi version
       Print the Higurashi version
   higurashi help

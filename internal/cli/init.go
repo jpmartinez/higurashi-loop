@@ -13,6 +13,7 @@ import (
 	"github.com/jpmartinez/higurashi-loop/internal/project"
 	"github.com/jpmartinez/higurashi-loop/internal/render"
 	"github.com/jpmartinez/higurashi-loop/internal/result"
+	"github.com/jpmartinez/higurashi-loop/internal/verification"
 )
 
 type initArguments struct {
@@ -123,7 +124,17 @@ func runInit(
 	if len(initialization.ChangedPaths) == 0 {
 		kind = "current"
 	}
+	suggestionReport := verification.Suggest(
+		root,
+		initialization.Config.Verification,
+	)
 	nextCommands := []string{"higurashi doctor"}
+	if len(suggestionReport.Suggestions) != 0 {
+		nextCommands = append(
+			[]string{"higurashi verification suggest"},
+			nextCommands...,
+		)
+	}
 	for _, adapter := range arguments.Runners {
 		switch adapter {
 		case "opencode":
@@ -133,14 +144,17 @@ func runInit(
 		}
 	}
 	envelope := result.Envelope{
-		Command:      "init",
-		OK:           true,
-		Kind:         kind,
-		ProjectRoot:  root,
-		Config:       initialization.Config,
-		Adapters:     arguments.Runners,
-		ChangedPaths: initialization.ChangedPaths,
-		NextCommands: nextCommands,
+		Command:                 "init",
+		OK:                      true,
+		Kind:                    kind,
+		ProjectRoot:             root,
+		Config:                  initialization.Config,
+		Adapters:                arguments.Runners,
+		ChangedPaths:            initialization.ChangedPaths,
+		NextCommands:            nextCommands,
+		VerificationSuggestions: suggestionReport.Suggestions,
+		SuggestedVerification:   suggestionReport.ConfigFragment,
+		Warnings:                suggestionReport.Warnings,
 	}
 	return writeInitResult(
 		stdout,
@@ -270,6 +284,7 @@ func writeInitResult(
 		for _, name := range envelope.ChangedPaths {
 			fmt.Fprintf(stdout, "Changed: %s\n", name)
 		}
+		writeEnvelopeVerificationSuggestions(stdout, envelope)
 		fmt.Fprintln(stdout, "Next commands:")
 		for _, command := range envelope.NextCommands {
 			fmt.Fprintf(stdout, "  %s\n", command)
@@ -291,6 +306,9 @@ func writeInitResult(
 	}
 	if !envelope.OK && envelope.Message != "" {
 		fmt.Fprintf(stderr, "higurashi: %s\n", envelope.Message)
+	}
+	for _, warning := range envelope.Warnings {
+		fmt.Fprintf(stderr, "higurashi: warning: %s\n", warning)
 	}
 	return exitCode
 }

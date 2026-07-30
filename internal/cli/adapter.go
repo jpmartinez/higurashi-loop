@@ -10,6 +10,7 @@ import (
 	"github.com/jpmartinez/higurashi-loop/internal/project"
 	"github.com/jpmartinez/higurashi-loop/internal/render"
 	"github.com/jpmartinez/higurashi-loop/internal/result"
+	"github.com/jpmartinez/higurashi-loop/internal/verification"
 )
 
 type adapterArguments struct {
@@ -165,6 +166,16 @@ func runAdapter(
 		root,
 		report,
 	)
+	suggestionReport := verification.Suggest(
+		root,
+		configuration.Verification,
+	)
+	envelope.VerificationSuggestions = suggestionReport.Suggestions
+	envelope.SuggestedVerification = suggestionReport.ConfigFragment
+	envelope.Warnings = suggestionReport.Warnings
+	if len(suggestionReport.Suggestions) != 0 {
+		envelope.NextCommand = "higurashi verification suggest"
+	}
 	return writeAdapterResult(
 		stdout,
 		stderr,
@@ -264,9 +275,16 @@ func writeAdapterResult(
 		for _, name := range envelope.StalePaths {
 			fmt.Fprintf(stdout, "Stale: %s\n", name)
 		}
+		writeEnvelopeVerificationSuggestions(stdout, envelope)
+		if envelope.NextCommand != "" {
+			fmt.Fprintf(stdout, "Next command: %s\n", envelope.NextCommand)
+		}
 	}
 	if !envelope.OK && envelope.Message != "" {
 		fmt.Fprintf(stderr, "higurashi: %s\n", envelope.Message)
+	}
+	for _, warning := range envelope.Warnings {
+		fmt.Fprintf(stderr, "higurashi: warning: %s\n", warning)
 	}
 	return exitCode
 }

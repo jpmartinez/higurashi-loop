@@ -65,8 +65,11 @@ reopened unless implementation evidence proves them unworkable.
 11. **Model execution:** delegated to the runner; the Go CLI never calls model
     providers directly.
 12. **Memory:** no memory dependency in the first release.
-13. **Skill generation:** no dynamic generation in the first release.
-14. **Migration strategy:** reproduce proven behavior through generic names and
+13. **Runner-session retry:** after a correctable non-terminal stop, a clear
+    retry reply re-enters PRECHECK for the same accepted invocation; it never
+    authorizes a repair round or bypasses durable inspection.
+14. **Skill generation:** no dynamic generation in the first release.
+15. **Migration strategy:** reproduce proven behavior through generic names and
     interfaces; do not copy project-specific policy.
 15. **Isolation:** the new project does not modify or install files into any
     existing consumer repository during development.
@@ -338,7 +341,10 @@ Behavior:
 5. Render only the selected adapters.
 6. Never alter unrelated default-agent settings.
 7. Refuse to overwrite non-generated files.
-8. Print the next required setup and health-check commands.
+8. Discover supported project-owned verification commands without executing
+   them or granting command authority.
+9. Print the next required setup, verification-review, and health-check
+   commands.
 
 `--force-generated` may replace only files carrying a valid Higurashi generated
 header whose previous source hash is recognized.
@@ -379,6 +385,18 @@ higurashi config validate [--json]
 
 Returns normalized effective configuration or structured validation failures.
 It does not rewrite configuration.
+
+#### `higurashi verification suggest`
+
+```text
+higurashi verification suggest [--json]
+```
+
+Reads supported project manifests and returns conservative verification-command
+suggestions, their source locations, exact argv arrays, timeouts, and any
+detected risk that requires review. It never executes a suggestion or rewrites
+configuration. A command becomes workflow authority only after the user adds it
+to the corresponding field in `.higurashi/config.json`.
 
 #### `higurashi inspect`
 
@@ -553,6 +571,8 @@ Initial `.higurashi/config.json`:
 - CodeGraph mode must be `required` or `preferred`.
 - Optimal mode means `required`.
 - Command arrays must contain argv arrays, not shell-concatenated strings.
+- Verification suggestions are read-only evidence and must never be treated as
+  configured command authority.
 - Unknown keys fail closed.
 
 ### 7.2 Command representation
@@ -1055,6 +1075,18 @@ Initial `config validate` result kinds:
 
 ```text
 valid
+configuration_missing
+configuration_invalid
+not_git_project
+unsafe_project_root
+invalid_usage
+```
+
+Initial `verification suggest` result kinds:
+
+```text
+suggestions
+current
 configuration_missing
 configuration_invalid
 not_git_project

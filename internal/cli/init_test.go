@@ -419,16 +419,18 @@ func TestInitRejectsMissingDuplicateAndUnknownRunners(t *testing.T) {
 }
 
 type initJSONResult struct {
-	SchemaVersion int      `json:"schemaVersion"`
-	Command       string   `json:"command"`
-	OK            bool     `json:"ok"`
-	Kind          string   `json:"kind"`
-	Message       string   `json:"message"`
-	ProjectRoot   string   `json:"projectRoot"`
-	Adapters      []string `json:"adapters"`
-	ChangedPaths  []string `json:"changedPaths"`
-	Conflicts     []string `json:"conflicts"`
-	NextCommands  []string `json:"nextCommands"`
+	SchemaVersion           int      `json:"schemaVersion"`
+	Command                 string   `json:"command"`
+	OK                      bool     `json:"ok"`
+	Kind                    string   `json:"kind"`
+	Message                 string   `json:"message"`
+	ProjectRoot             string   `json:"projectRoot"`
+	Adapters                []string `json:"adapters"`
+	ChangedPaths            []string `json:"changedPaths"`
+	Conflicts               []string `json:"conflicts"`
+	NextCommands            []string `json:"nextCommands"`
+	VerificationSuggestions any      `json:"verificationSuggestions"`
+	SuggestedVerification   any      `json:"suggestedVerification"`
 }
 
 func runInitJSON(

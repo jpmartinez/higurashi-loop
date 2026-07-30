@@ -107,6 +107,31 @@ func TestAdapterInstallAndDiffCanonicalProtocol(t *testing.T) {
 	}
 }
 
+func TestAdapterInstallSuggestsUnconfiguredVerificationCommands(t *testing.T) {
+	repository := newGitRepository(t)
+	writeMinimalConfig(t, repository, "preferred")
+	writeFile(t, filepath.Join(repository, "bun.lock"), "")
+	writeFile(t, filepath.Join(repository, "package.json"), `{
+  "scripts": {"test": "bun test"}
+}`)
+
+	exitCode, installed, stderr := runAdapterJSON(
+		t,
+		repository,
+		"install",
+		"opencode",
+	)
+
+	if exitCode != 0 {
+		t.Fatalf("install exit code = %d\nstderr:\n%s", exitCode, stderr)
+	}
+	if installed.NextCommand != "higurashi verification suggest" ||
+		installed.VerificationSuggestions == nil ||
+		installed.SuggestedVerification == nil {
+		t.Errorf("installed result = %+v, want verification guidance", installed)
+	}
+}
+
 func TestAdapterUpdateRefusesLocalModification(t *testing.T) {
 	repository := newGitRepository(t)
 	writeMinimalConfig(t, repository, "preferred")
@@ -419,16 +444,19 @@ func assertEffectiveAgentPermission(
 }
 
 type adapterJSONResult struct {
-	SchemaVersion int      `json:"schemaVersion"`
-	Command       string   `json:"command"`
-	OK            bool     `json:"ok"`
-	Kind          string   `json:"kind"`
-	Message       string   `json:"message"`
-	Adapter       string   `json:"adapter"`
-	ChangedPaths  []string `json:"changedPaths"`
-	Conflicts     []string `json:"conflicts"`
-	StalePaths    []string `json:"stalePaths"`
-	Files         []struct {
+	SchemaVersion           int      `json:"schemaVersion"`
+	Command                 string   `json:"command"`
+	OK                      bool     `json:"ok"`
+	Kind                    string   `json:"kind"`
+	Message                 string   `json:"message"`
+	Adapter                 string   `json:"adapter"`
+	ChangedPaths            []string `json:"changedPaths"`
+	Conflicts               []string `json:"conflicts"`
+	StalePaths              []string `json:"stalePaths"`
+	NextCommand             string   `json:"nextCommand"`
+	VerificationSuggestions any      `json:"verificationSuggestions"`
+	SuggestedVerification   any      `json:"suggestedVerification"`
+	Files                   []struct {
 		Path   string `json:"path"`
 		Status string `json:"status"`
 	} `json:"files"`

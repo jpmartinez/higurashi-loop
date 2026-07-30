@@ -31,6 +31,7 @@ higurashi transition WORK-123 STATUS --expected-hash HASH [--reason TEXT] [--jso
 higurashi repair authorize WORK-123 [--json]
 higurashi adapter <install|diff|update> <opencode|claude-code> [--json]
 higurashi models <show|set|validate> [--runner opencode] [OPTIONS]
+higurashi verification suggest [--json]
 ```
 
 Project-local OpenCode and Claude Code adapter generation is implemented. The
@@ -93,7 +94,7 @@ place it in a directory on `PATH`.
 For example, on Linux amd64:
 
 ```text
-version=v0.1.0-alpha.1
+version=v0.1.0-alpha.2
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/higurashi_${version}_linux_amd64.tar.gz"
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/checksums.txt"
 sha256sum --check --ignore-missing checksums.txt
@@ -134,7 +135,7 @@ mise exec -- go build -o ./bin/higurashi ./cmd/higurashi
 ### Install into the Go binary directory
 
 ```text
-go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.1
+go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.2
 ```
 
 This installs `higurashi` into `GOBIN`, or into the current Go environment's
@@ -165,6 +166,27 @@ higurashi config validate --json
 The command is read-only. It discovers the containing Git project, rejects
 unknown configuration fields and unsafe paths, applies conservative defaults,
 and returns exit code `3` for missing or invalid configuration.
+
+Discover project-owned verification commands before authorizing agents to run
+them:
+
+```text
+higurashi verification suggest
+higurashi verification suggest --json
+```
+
+Suggestion discovery is read-only: it never executes commands or changes
+configuration. It recognizes high-confidence Go commands and package-manager
+scripts from `package.json`, using Bun, pnpm, Yarn, or npm based on the declared
+manager or lockfile. Each suggestion includes its exact argv, timeout, source,
+destination under `verification`, and whether its script requires review for
+operations such as a local database reset, deployment, publication, push,
+forced mutation, or removal. Commands already configured by argv are omitted.
+
+The human-readable result includes a complete suggested `verification` value
+for `.higurashi/config.json`. Review and copy only the commands the project
+intends to authorize. Detection rules live in Higurashi, but accepted commands
+remain durable, project-owned configuration.
 
 Check project and CodeGraph health:
 
@@ -392,6 +414,13 @@ The following delivery invocation preserves that confirmed contract, adds the
 TDD checklist, and transitions it to `planned`.
 
 The normal delivery form resumes an existing durable artifact automatically.
+When a normal delivery stops on a correctable, non-terminal blocker, resolve
+the reported cause and reply `try again`, `retry`, or `continue` in the same
+runner conversation. The coordinator re-enters PRECHECK with the same work-item
+ID and options, reloads durable state and configuration, and continues without
+requiring the slash command again. Retry never authorizes a repair round; an
+explicit `--repair` invocation is still required when inspection reports
+`repair_ready`.
 `--plan-only` creates or inspects the plan and stops before APPLY. The
 `higurashi` and `codegraph` executables must be available to OpenCode through
 `PATH`.
@@ -522,6 +551,16 @@ It never changes global runner settings or overwrites user-owned files.
 Repeating the same command is idempotent. If a recognized generated file was
 locally changed and must be restored deliberately, use `--force-generated`;
 this flag still refuses unrecognized or user-owned files.
+
+When known project manifests contain unconfigured verification commands, init
+also returns their structured suggestions and adds this read-only next command:
+
+```text
+higurashi verification suggest
+```
+
+Adapter installation and updates expose the same guidance. Neither operation
+silently adds command authority to project configuration.
 
 CodeGraph keeps a separate index per checkout or worktree. If the project does
 not yet have `.codegraph/`, initialize it locally and do not commit the index:
