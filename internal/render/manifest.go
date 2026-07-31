@@ -399,7 +399,9 @@ func validateManifest(value manifest) error {
 			)
 		}
 		previousPath = record.Path
-		if record.Adapter != "opencode" && record.Adapter != "claude-code" {
+		if record.Adapter != "opencode" &&
+			record.Adapter != "claude-code" &&
+			record.Adapter != "pi" {
 			return fmt.Errorf(
 				"generated manifest files[%d].adapter is invalid",
 				index,

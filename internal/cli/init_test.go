@@ -75,6 +75,61 @@ func TestInitCreatesSelectedOpenCodeProjectFiles(t *testing.T) {
 	}
 }
 
+func TestInitCreatesSelectedPiProjectFiles(t *testing.T) {
+	repository := newGitRepository(t)
+
+	exitCode, result, stderr := runInitJSON(
+		t,
+		repository,
+		"init",
+		"--runner",
+		"pi",
+		"--json",
+	)
+
+	if exitCode != 0 {
+		t.Fatalf("init exit code = %d, want 0\n%s", exitCode, stderr)
+	}
+	if !result.OK || result.Kind != "initialized" {
+		t.Errorf("result = ok:%v kind:%q, want initialized", result.OK, result.Kind)
+	}
+	if !slices.Equal(result.Adapters, []string{"pi"}) {
+		t.Errorf("adapters = %v, want [pi]", result.Adapters)
+	}
+	for _, relative := range []string{
+		".pi/prompts/higurashi-deliver.md",
+		".pi/prompts/higurashi-refine.md",
+		".pi/skills/higurashi-deliver/SKILL.md",
+		".pi/skills/higurashi-refine/SKILL.md",
+	} {
+		if _, err := os.Stat(filepath.Join(
+			repository,
+			filepath.FromSlash(relative),
+		)); err != nil {
+			t.Errorf("expected initialized path %s: %v", relative, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(repository, ".opencode")); !os.IsNotExist(err) {
+		t.Errorf("OpenCode path exists after Pi-only init: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repository, ".claude")); !os.IsNotExist(err) {
+		t.Errorf("Claude path exists after Pi-only init: %v", err)
+	}
+
+	configuration, err := config.Load(repository)
+	if err != nil {
+		t.Fatalf("load initialized config: %v", err)
+	}
+	if !configuration.Runners.Pi.Enabled ||
+		configuration.Runners.OpenCode.Enabled ||
+		configuration.Runners.ClaudeCode.Enabled {
+		t.Errorf("initialized runners = %+v, want only Pi", configuration.Runners)
+	}
+	if !slices.Contains(result.NextCommands, "pi") {
+		t.Errorf("nextCommands = %v, want pi", result.NextCommands)
+	}
+}
+
 func TestInitAcceptsExplicitRequirementSource(t *testing.T) {
 	repository := newGitRepository(t)
 	requirementSource := filepath.Join(

@@ -132,6 +132,51 @@ func TestAdapterInstallSuggestsUnconfiguredVerificationCommands(t *testing.T) {
 	}
 }
 
+func TestPiAdapterInstallsNativeSkillsAndPrompts(t *testing.T) {
+	repository := newGitRepository(t)
+	writeMinimalConfig(t, repository, "preferred")
+
+	exitCode, installed, stderr := runAdapterJSON(
+		t,
+		repository,
+		"install",
+		"pi",
+	)
+
+	if exitCode != 0 {
+		t.Fatalf("install exit code = %d\n%s", exitCode, stderr)
+	}
+	if installed.Kind != "installed" {
+		t.Errorf("install kind = %q, want installed", installed.Kind)
+	}
+	if len(installed.ChangedPaths) != 7 {
+		t.Errorf(
+			"changedPaths = %v, want six Pi files and manifest",
+			installed.ChangedPaths,
+		)
+	}
+	for _, relative := range []string{
+		".pi/prompts/higurashi-deliver.md",
+		".pi/prompts/higurashi-refine.md",
+		".pi/skills/higurashi-deliver/SKILL.md",
+		".pi/skills/higurashi-deliver/references/artifact-contract.md",
+		".pi/skills/higurashi-deliver/references/reviewer-contract.md",
+		".pi/skills/higurashi-refine/SKILL.md",
+	} {
+		content, err := os.ReadFile(filepath.Join(
+			repository,
+			filepath.FromSlash(relative),
+		))
+		if err != nil {
+			t.Errorf("read installed Pi file %s: %v", relative, err)
+			continue
+		}
+		if !bytes.Contains(content, []byte("Higurashi-Generated:")) {
+			t.Errorf("%s is missing generated ownership", relative)
+		}
+	}
+}
+
 func TestAdapterUpdateRefusesLocalModification(t *testing.T) {
 	repository := newGitRepository(t)
 	writeMinimalConfig(t, repository, "preferred")

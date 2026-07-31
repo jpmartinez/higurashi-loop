@@ -511,7 +511,7 @@ func parseModelsArguments(args []string) (modelsArguments, error) {
 		}
 	}
 	switch parsed.Runner {
-	case "opencode", "claude-code":
+	case "opencode", "claude-code", "pi":
 	default:
 		return parsed, fmt.Errorf("unsupported runner %q", parsed.Runner)
 	}
@@ -719,7 +719,7 @@ func writeModelsResult(
 
 func writeModelsHelp(writer io.Writer) {
 	fmt.Fprintln(writer, `Usage:
-  higurashi models show [--runner opencode] [--json]
+  higurashi models show [--runner <opencode|claude-code|pi>] [--json]
   higurashi models validate [--runner opencode] [--json]
   higurashi models set [--runner opencode] [ROLE OPTIONS] [--json]
 

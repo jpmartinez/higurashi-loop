@@ -30,6 +30,7 @@ func TestParseRejectsIncompletePlaceholderAndConflictingHandoffs(t *testing.T) {
 			name: "duplicate blocker",
 			content: validHandoff("ready", 1) + `
 ## Blocker B-001
+Severity: low
 Originating-Reviewer: risk
 Violated-Contract: duplicate
 Evidence-Location: internal/y.go:9
@@ -82,6 +83,24 @@ Minimum-Acceptance: focused test passes
 				t.Errorf("error = %q, want it to contain %q", err, test.contains)
 			}
 		})
+	}
+}
+
+func TestParseRejectsUnclassifiedBlockerSeverity(t *testing.T) {
+	content := strings.Replace(
+		validHandoff("ready", 1),
+		"Severity: high",
+		"Severity: urgent",
+		1,
+	)
+
+	_, err := Parse([]byte(content), "WORK-123", 1)
+
+	if !errors.Is(err, ErrInvalidHandoff) {
+		t.Fatalf("Parse() error = %v, want ErrInvalidHandoff", err)
+	}
+	if !strings.Contains(err.Error(), "unsupported Severity") {
+		t.Errorf("Parse() error = %q, want severity diagnostic", err)
 	}
 }
 
@@ -278,6 +297,7 @@ Next-Command: higurashi repair authorize WORK-123
 Candidate-Strategy: uncommitted
 
 ## Blocker B-001
+Severity: high
 Originating-Reviewer: contract
 Violated-Contract: authorization must preserve durable evidence
 Evidence-Location: internal/x.go:42

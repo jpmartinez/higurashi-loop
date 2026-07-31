@@ -141,6 +141,8 @@ func runInit(
 			nextCommands = append(nextCommands, "opencode")
 		case "claude-code":
 			nextCommands = append(nextCommands, "claude --plugin-dir .")
+		case "pi":
+			nextCommands = append(nextCommands, "pi")
 		}
 	}
 	envelope := result.Envelope{
@@ -191,7 +193,7 @@ func parseInitArguments(args []string) (initArguments, error) {
 			}
 			index++
 			runner := args[index]
-			if runner != "opencode" && runner != "claude-code" {
+			if runner != "opencode" && runner != "claude-code" && runner != "pi" {
 				return parsed, fmt.Errorf("unsupported runner %q", runner)
 			}
 			if seenRunners[runner] {
@@ -301,6 +303,11 @@ func writeInitResult(
 					stdout,
 					"Claude Code: /higurashi-loop:refine WORK-123 or /higurashi-loop:deliver WORK-123",
 				)
+			case "pi":
+				fmt.Fprintln(
+					stdout,
+					"Pi: /higurashi-refine WORK-123 or /higurashi-deliver WORK-123",
+				)
 			}
 		}
 	}
@@ -315,7 +322,7 @@ func writeInitResult(
 
 func writeInitHelp(writer io.Writer) {
 	fmt.Fprintln(writer, `Usage:
-  higurashi init --runner <opencode|claude-code> [--runner NAME ...]
+  higurashi init --runner <opencode|claude-code|pi> [--runner NAME ...]
       [--requirement-source PATH ...] [--project-root PATH]
       [--force-generated] [--json]
 

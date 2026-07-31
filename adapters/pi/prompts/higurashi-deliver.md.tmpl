@@ -1,0 +1,18 @@
+---
+description: Deliver one work item through Higurashi Loop's guarded workflow
+argument-hint: "<WORK-ITEM-ID> [--plan-only|--repair]"
+---
+
+Run the Higurashi delivery workflow for these exact arguments:
+
+`$ARGUMENTS`
+
+Accept only `<WORK-ITEM-ID>`, `<WORK-ITEM-ID> --plan-only`, or
+`<WORK-ITEM-ID> --repair`. Treat the work-item ID as opaque input, never as a
+path or shell fragment. Reject missing, reordered, or additional arguments.
+
+Load the `higurashi-deliver` skill and follow it as the authoritative workflow
+contract. The Pi adapter uses the current Pi session as its coordinator and
+does not require a subagent extension. If a trusted Pi subagent extension is
+installed, it may be used for the named Higurashi roles, but it must preserve
+the same one-task, read-only reviewer, bounded-loop, and anti-bypass contracts.

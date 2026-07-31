@@ -118,6 +118,44 @@ func TestTransitionPreservesCRLFWhenEnteringBlocked(t *testing.T) {
 	}
 }
 
+func TestCompleteWithNotePreservesAnUnresolvedBlockedDecision(t *testing.T) {
+	content := graphArtifact("blocked")
+	content = strings.Replace(
+		content,
+		"- [x] **task-001 — Prove the graph:** complete.",
+		"- [ ] **task-001 — Prove the graph:** pending.",
+		1,
+	)
+	document, err := artifact.Parse([]byte(content), "WORK-123")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	note := "Human-ordered completion; unresolved blocker B-001 deferred as follow-up WORK-456"
+
+	change, err := artifact.CompleteWithNote(artifact.Snapshot{
+		WorkItemID: "WORK-123",
+		Document:   document,
+		Content:    []byte(content),
+		Mode:       0o600,
+	}, note)
+	if err != nil {
+		t.Fatalf("CompleteWithNote() error = %v", err)
+	}
+	if change.Document.Status != "complete" {
+		t.Errorf("status = %q, want complete", change.Document.Status)
+	}
+	if change.Document.CompletionNote != note {
+		t.Errorf("completion note = %q, want %q", change.Document.CompletionNote, note)
+	}
+	if change.Document.Progress.Pending != 1 {
+		t.Errorf("pending = %d, want 1", change.Document.Progress.Pending)
+	}
+	if strings.Contains(string(change.Content), "Blocked-From:") ||
+		strings.Contains(string(change.Content), "Blocker-Reason:") {
+		t.Errorf("blocked fields survived completion:\n%s", change.Content)
+	}
+}
+
 func graphArtifact(status string) string {
 	fields := "Status: " + status + "\n"
 	if status == "blocked" {

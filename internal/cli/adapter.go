@@ -221,7 +221,7 @@ func parseAdapterArguments(args []string) (adapterArguments, error) {
 		)
 	}
 	switch parsed.Adapter {
-	case "opencode", "claude-code":
+	case "opencode", "claude-code", "pi":
 	default:
 		return parsed, fmt.Errorf(
 			"unsupported adapter %q",
@@ -291,9 +291,9 @@ func writeAdapterResult(
 
 func writeAdapterHelp(writer io.Writer) {
 	fmt.Fprintln(writer, `Usage:
-  higurashi adapter install <opencode|claude-code> [--json]
-  higurashi adapter diff <opencode|claude-code> [--json]
-  higurashi adapter update <opencode|claude-code> [--json]
+  higurashi adapter install <opencode|claude-code|pi> [--json]
+  higurashi adapter diff <opencode|claude-code|pi> [--json]
+  higurashi adapter update <opencode|claude-code|pi> [--json]
 
 Renders or inspects the canonical runner-neutral protocol. Existing
 unrecognized or locally modified generated files are never overwritten.`)

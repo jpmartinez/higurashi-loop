@@ -2,11 +2,14 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/jpmartinez/higurashi-loop/internal/artifact"
@@ -23,6 +26,7 @@ type transitionArguments struct {
 	Target       string
 	ExpectedHash string
 	Reason       string
+	Deferrals    []repair.Deferral
 	JSON         bool
 	Help         bool
 }
@@ -278,15 +282,101 @@ func runTransition(
 		)
 	}
 
-	change, err := artifact.Transition(
-		snapshot,
-		arguments.Target,
-		arguments.Reason,
-	)
+	completionNote := ""
+	followUpRequirements := []string(nil)
+	changedPaths := []string(nil)
+	var change artifact.Change
+	if len(arguments.Deferrals) > 0 {
+		validation := repair.ValidateFile(
+			absoluteHandoffPath,
+			arguments.WorkItemID,
+			snapshot.Document.RepairRound+1,
+		)
+		if err := repair.ValidateDeferrals(
+			validation.Handoff,
+			arguments.Deferrals,
+		); err != nil {
+			return writeTransitionFailure(
+				stdout,
+				stderr,
+				arguments.JSON,
+				root,
+				arguments.WorkItemID,
+				artifactPath,
+				"invalid_repair_state",
+				err.Error(),
+				exitInvalidArtifact,
+				diagnostic,
+				warnings,
+			)
+		}
+		for _, deferral := range arguments.Deferrals {
+			if err := workitem.ValidateID(
+				configuration.WorkItems.IDPattern,
+				deferral.FollowUpID,
+			); err != nil {
+				return writeTransitionFailure(
+					stdout,
+					stderr,
+					arguments.JSON,
+					root,
+					arguments.WorkItemID,
+					artifactPath,
+					"invalid_repair_state",
+					err.Error(),
+					exitInvalidArtifact,
+					diagnostic,
+					warnings,
+				)
+			}
+		}
+		completionNote = repair.CompletionNote(
+			validation.Handoff,
+			arguments.Deferrals,
+		)
+		change, err = artifact.CompleteWithNote(snapshot, completionNote)
+		if err == nil {
+			changedPaths, err = materializeDeferredFollowUps(
+				root,
+				configuration,
+				arguments.WorkItemID,
+				validation.Handoff,
+				arguments.Deferrals,
+			)
+		}
+		followUpRequirements = make([]string, 0, len(arguments.Deferrals))
+		for _, deferral := range arguments.Deferrals {
+			followUpRequirements = append(
+				followUpRequirements,
+				deferral.FollowUpID,
+			)
+		}
+	} else {
+		change, err = artifact.Transition(
+			snapshot,
+			arguments.Target,
+			arguments.Reason,
+		)
+	}
 	if err != nil {
 		kind := "invalid_artifact"
 		if errors.Is(err, artifact.ErrIllegalTransition) {
 			kind = "illegal_transition"
+		}
+		if len(arguments.Deferrals) > 0 &&
+			!errors.Is(err, artifact.ErrIllegalTransition) {
+			kind = "follow_up_write_failed"
+			if errors.Is(err, errRequirementConflict) ||
+				errors.Is(err, workitem.ErrConflict) {
+				kind = "conflict"
+			}
+			if errors.Is(err, repair.ErrInvalidDeferral) {
+				kind = "invalid_repair_state"
+			}
+			if errors.Is(err, project.ErrPathEscapesRoot) ||
+				errors.Is(err, project.ErrUnsafeMutationPath) {
+				kind = "unsafe_project_root"
+			}
 		}
 		return writeTransitionFailure(
 			stdout,
@@ -366,6 +456,9 @@ func runTransition(
 		AuthorizationRequired: &authorizationRequired,
 		NextCommand:           nextCommand,
 		CandidateStrategy:     candidateStrategy,
+		CompletionNote:        change.Document.CompletionNote,
+		FollowUpRequirements:  followUpRequirements,
+		ChangedPaths:          changedPaths,
 		Progress:              change.Document.Progress,
 		Warnings:              warnings,
 		CodeGraph:             diagnostic,
@@ -378,11 +471,114 @@ func runTransition(
 	)
 }
 
+func materializeDeferredFollowUps(
+	root string,
+	configuration config.Config,
+	workItemID string,
+	handoff repair.Document,
+	deferrals []repair.Deferral,
+) ([]string, error) {
+	managedDirectory := path.Join(
+		configuration.Artifacts.Directory,
+		"requirements",
+	)
+	nextConfiguration := configuration
+	configurationChanged := !slices.Contains(
+		nextConfiguration.WorkItems.RequirementSources,
+		managedDirectory,
+	)
+	if configurationChanged {
+		nextConfiguration.WorkItems.RequirementSources = append(
+			append([]string(nil), nextConfiguration.WorkItems.RequirementSources...),
+			managedDirectory,
+		)
+	}
+
+	blockers := make(map[string]repair.Blocker, len(handoff.Blockers))
+	for _, blocker := range handoff.Blockers {
+		blockers[blocker.ID] = blocker
+	}
+	type followUp struct {
+		path    string
+		content []byte
+	}
+	followUps := make([]followUp, 0, len(deferrals))
+	for _, deferral := range deferrals {
+		blocker := blockers[deferral.BlockerID]
+		requirementPath := path.Join(
+			managedDirectory,
+			deferral.FollowUpID+".md",
+		)
+		body := repair.FollowUpBody(
+			workItemID,
+			deferral.FollowUpID,
+			blocker,
+		)
+		sourceLabel := workItemID + "#" + blocker.ID
+		sourceHash := fmt.Sprintf("%x", sha256.Sum256(body))
+		content := importedRequirementDocument(
+			deferral.FollowUpID,
+			"blocker-follow-up",
+			sourceLabel,
+			sourceHash,
+			body,
+		)
+
+		match, err := workitem.Find(
+			root,
+			configuration.WorkItems.RequirementSources,
+			deferral.FollowUpID,
+		)
+		if err == nil && match.Source != requirementPath {
+			return nil, fmt.Errorf(
+				"follow-up work item %s already exists at %s",
+				deferral.FollowUpID,
+				match.Source,
+			)
+		}
+		if err != nil && !errors.Is(err, workitem.ErrUnknown) {
+			return nil, err
+		}
+		followUps = append(followUps, followUp{
+			path:    requirementPath,
+			content: content,
+		})
+	}
+
+	var changedPaths []string
+	for _, followUp := range followUps {
+		created, err := createRequirementSnapshot(
+			root,
+			followUp.path,
+			followUp.content,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("create deferred follow-up: %w", err)
+		}
+		if created {
+			changedPaths = append(changedPaths, followUp.path)
+		}
+	}
+	if configurationChanged {
+		encoded, err := config.Encode(nextConfiguration)
+		if err != nil {
+			return nil, fmt.Errorf("encode follow-up configuration: %w", err)
+		}
+		if err := replaceProjectConfig(root, encoded); err != nil {
+			return nil, fmt.Errorf("update requirement sources for follow-ups: %w", err)
+		}
+		changedPaths = append(changedPaths, ".higurashi/config.json")
+	}
+	slices.Sort(changedPaths)
+	return changedPaths, nil
+}
+
 func parseTransitionArguments(args []string) (transitionArguments, error) {
 	var parsed transitionArguments
 	var positionals []string
 	expectedHashSeen := false
 	reasonSeen := false
+	seenDeferrals := map[string]bool{}
 	for index := 0; index < len(args); index++ {
 		argument := args[index]
 		switch argument {
@@ -416,6 +612,28 @@ func parseTransitionArguments(args []string) (transitionArguments, error) {
 			index++
 			parsed.Reason = args[index]
 			reasonSeen = true
+		case "--defer-blocker":
+			if index+1 >= len(args) {
+				return parsed, errors.New("--defer-blocker requires a value")
+			}
+			index++
+			blockerID, followUpID, ok := strings.Cut(args[index], "=")
+			if !ok || blockerID == "" || followUpID == "" {
+				return parsed, errors.New(
+					"--defer-blocker requires BLOCKER-ID=FOLLOW-UP-ID",
+				)
+			}
+			if seenDeferrals[blockerID] {
+				return parsed, fmt.Errorf(
+					"--defer-blocker may name %q only once",
+					blockerID,
+				)
+			}
+			seenDeferrals[blockerID] = true
+			parsed.Deferrals = append(parsed.Deferrals, repair.Deferral{
+				BlockerID:  blockerID,
+				FollowUpID: followUpID,
+			})
 		default:
 			if strings.HasPrefix(argument, "-") {
 				return parsed, fmt.Errorf("unknown option %q", argument)
@@ -430,6 +648,16 @@ func parseTransitionArguments(args []string) (transitionArguments, error) {
 	}
 	parsed.WorkItemID = positionals[0]
 	parsed.Target = positionals[1]
+	if len(parsed.Deferrals) > 0 && parsed.Target != "complete" {
+		return parsed, errors.New(
+			"--defer-blocker is valid only when targeting complete",
+		)
+	}
+	if len(parsed.Deferrals) > 0 && reasonSeen {
+		return parsed, errors.New(
+			"--defer-blocker cannot be combined with --reason",
+		)
+	}
 	if !expectedHashSeen {
 		return parsed, errors.New("--expected-hash is required")
 	}
@@ -505,6 +733,12 @@ func writeTransitionResult(
 		fmt.Fprintf(stdout, "Artifact: %s\n", envelope.ArtifactPath)
 		fmt.Fprintf(stdout, "Status: %s\n", envelope.ArtifactStatus)
 		fmt.Fprintf(stdout, "Artifact SHA-256: %s\n", envelope.ArtifactHash)
+		if envelope.CompletionNote != "" {
+			fmt.Fprintf(stdout, "Completion note: %s\n", envelope.CompletionNote)
+		}
+		for _, followUp := range envelope.FollowUpRequirements {
+			fmt.Fprintf(stdout, "Follow-up requirement: %s\n", followUp)
+		}
 		if progress, ok := envelope.Progress.(artifact.Progress); ok {
 			fmt.Fprintf(
 				stdout,
@@ -523,9 +757,12 @@ func writeTransitionResult(
 
 func writeTransitionHelp(writer io.Writer) {
 	fmt.Fprintln(writer, `Usage:
-  higurashi transition WORK-123 STATUS --expected-hash HASH [--reason TEXT] [--json]
+  higurashi transition WORK-123 STATUS --expected-hash HASH [--reason TEXT]
+    [--defer-blocker BLOCKER-ID=FOLLOW-UP-ID ...] [--json]
 
 Validates the current artifact and expected SHA-256 hash, enforces the legal
 state graph and checklist invariants, then atomically updates only machine-owned
-fields. Use --reason when entering blocked.`)
+fields. Use --reason when entering blocked. To complete blocked work, defer
+every classified blocker explicitly with a named follow-up work item; Higurashi
+will create those follow-up requirements and retain the unresolved decision.`)
 }

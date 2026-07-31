@@ -51,8 +51,9 @@ Count progress only from checklist markers.
 
 ## Machine-owned fields
 
-Change `Higurashi-Schema`, `Status`, `Repair-Round`, `Blocked-From`, and
-`Blocker-Reason` only through Higurashi CLI operations. Existing artifacts
+Change `Higurashi-Schema`, `Status`, `Repair-Round`, `Blocked-From`,
+`Blocker-Reason`, and `Completion-Note` only through Higurashi CLI operations.
+Existing artifacts
 without `Repair-Round` are interpreted as round zero and gain the field on the
 next mutation. Never edit these fields to bypass a legal transition,
 pending-task check, stale hash, or blocker.
@@ -65,12 +66,15 @@ planned      → implementing | blocked
 implementing → verifying | blocked
 verifying    → complete | blocked
 blocked      → implementing only through `higurashi repair authorize`
+blocked      → complete only through explicit follow-up deferral
 complete     → complete
 ```
 
 Require at least one task for `planned` and `implementing`. Require zero pending
-tasks for `verifying` and `complete`. Require a nonterminal origin and bounded
-reason for `blocked`.
+tasks for `verifying` and normal `complete`. A human-ordered completion may
+retain pending repair tasks only when `Completion-Note` records the explicit
+follow-up disposition. Require a nonterminal origin and bounded reason for
+`blocked`.
 
 Before every transition, obtain the exact current SHA-256 hash from:
 
@@ -86,6 +90,21 @@ higurashi transition WORK-123 TARGET --expected-hash HASH --json
 
 Use `--reason TEXT` only when entering `blocked`. Stop on `stale_hash`; inspect
 again instead of overwriting concurrent work.
+
+Reviewers classify every handoff blocker with one severity: `critical`, `high`,
+`medium`, or `low`. A user may explicitly defer all blockers to named
+follow-up requirements and complete the blocked item with:
+
+```text
+higurashi transition WORK-123 complete \
+  --expected-hash HASH \
+  --defer-blocker B-001=FOLLOW-123 [--defer-blocker B-002=FOLLOW-124 ...]
+```
+
+The command requires exactly one mapping for every blocker, creates each
+follow-up requirement in the managed requirement directory, preserves the
+review evidence and minimum acceptance condition, and records the unresolved
+decision in `Completion-Note`. It does not mark the blocker repaired.
 
 ## Durable repair handoff
 
@@ -108,6 +127,7 @@ Next-Command: higurashi repair authorize WORK-123
 Candidate-Strategy: uncommitted
 
 ## Blocker B-001
+Severity: high
 Originating-Reviewer: contract
 Violated-Contract: exact violated contract or invariant
 Evidence-Location: path/to/file.go:42

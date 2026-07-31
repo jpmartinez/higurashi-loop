@@ -25,10 +25,12 @@ type Envelope struct {
 	ArtifactStatus          string   `json:"artifactStatus,omitempty"`
 	ArtifactHash            string   `json:"artifactHash,omitempty"`
 	BlockedFrom             string   `json:"blockedFrom,omitempty"`
+	CompletionNote          string   `json:"completionNote,omitempty"`
 	RepairRound             *int     `json:"repairRound,omitempty"`
 	HandoffPath             string   `json:"handoffPath,omitempty"`
 	HandoffValidation       string   `json:"handoffValidation,omitempty"`
 	BlockerCount            int      `json:"blockerCount,omitempty"`
+	Blockers                any      `json:"blockers,omitempty"`
 	AuthorizationRequired   *bool    `json:"authorizationRequired,omitempty"`
 	NextCommand             string   `json:"nextCommand,omitempty"`
 	CandidateStrategy       string   `json:"candidateStrategy,omitempty"`
@@ -43,6 +45,7 @@ type Envelope struct {
 	SuggestedVerification   any      `json:"suggestedVerification,omitempty"`
 	Files                   any      `json:"files,omitempty"`
 	ChangedPaths            []string `json:"changedPaths,omitempty"`
+	FollowUpRequirements    []string `json:"followUpRequirements,omitempty"`
 	Conflicts               []string `json:"conflicts,omitempty"`
 	StalePaths              []string `json:"stalePaths,omitempty"`
 	NextCommands            []string `json:"nextCommands,omitempty"`

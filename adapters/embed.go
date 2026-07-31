@@ -8,4 +8,5 @@ import "embed"
 //go:embed opencode/commands/*.tmpl opencode/agents/*.tmpl
 //go:embed claude-code/.claude-plugin/*.tmpl claude-code/skills/*/*.tmpl
 //go:embed claude-code/agents/*.tmpl claude-code/*.tmpl
+//go:embed pi/prompts/*.tmpl
 var Files embed.FS

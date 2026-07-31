@@ -111,6 +111,7 @@ func Validate(configuration Config) error {
 	}{
 		{"opencode", configuration.Runners.OpenCode},
 		{"claudeCode", configuration.Runners.ClaudeCode},
+		{"pi", configuration.Runners.Pi},
 	}
 	for _, item := range runners {
 		if err := ValidateModelAssignments(item.runner.Models); err != nil {

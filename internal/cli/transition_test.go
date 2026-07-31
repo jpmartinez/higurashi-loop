@@ -253,6 +253,7 @@ func TestTransitionRejectsIllegalStateChangesWithoutWriting(t *testing.T) {
 		{"complete is terminal", "complete", "", "blocked", true},
 		{"blocked resumes to wrong state", "blocked", "planned", "implementing", false},
 		{"blocked normal resume requires repair authorization", "blocked", "planned", "planned", false},
+		{"blocked completion requires explicit deferrals", "blocked", "verifying", "complete", true},
 	}
 
 	for _, test := range tests {
@@ -293,6 +294,110 @@ func TestTransitionRejectsIllegalStateChangesWithoutWriting(t *testing.T) {
 				t.Error("illegal transition modified the artifact")
 			}
 		})
+	}
+}
+
+func TestTransitionDefersBlockedArtifactAndCreatesFollowUpRequirement(t *testing.T) {
+	repository := newGitRepository(t)
+	writeInspectFixture(t, repository)
+	document := transitionArtifact("blocked", "verifying", false)
+	writeArtifact(t, repository, document)
+	writeFile(
+		t,
+		filepath.Join(
+			repository,
+			"docs",
+			"higurashi",
+			"WORK-123-repair-1.md",
+		),
+		deferredRepairHandoff(),
+	)
+
+	exitCode, result, stderr := runTransitionJSONWithDeferrals(
+		t,
+		repository,
+		"WORK-123",
+		"complete",
+		hashText(document),
+		"B-001=FOLLOW-123",
+	)
+
+	if exitCode != 0 {
+		t.Fatalf(
+			"exit code = %d, want 0\nstderr:\n%s",
+			exitCode,
+			stderr,
+		)
+	}
+	if result.Kind != "transitioned" {
+		t.Errorf("kind = %q, want transitioned", result.Kind)
+	}
+	if result.ArtifactStatus != "complete" {
+		t.Errorf("artifactStatus = %q, want complete", result.ArtifactStatus)
+	}
+	wantNote := "Human-ordered completion; unresolved blocker B-001 " +
+		"(high) deferred as follow-up FOLLOW-123"
+	if result.CompletionNote != wantNote {
+		t.Errorf(
+			"completionNote = %q, want %q",
+			result.CompletionNote,
+			wantNote,
+		)
+	}
+	if len(result.FollowUpRequirements) != 1 ||
+		result.FollowUpRequirements[0] != "FOLLOW-123" {
+		t.Errorf(
+			"followUpRequirements = %v, want [FOLLOW-123]",
+			result.FollowUpRequirements,
+		)
+	}
+	inspectExit, inspected, inspectStderr := runInspectJSON(
+		t,
+		repository,
+		"WORK-123",
+	)
+	if inspectExit != 0 {
+		t.Fatalf(
+			"inspect exit code = %d, want 0\nstderr:\n%s",
+			inspectExit,
+			inspectStderr,
+		)
+	}
+	if inspected.Kind != "complete" || inspected.CompletionNote != wantNote {
+		t.Errorf(
+			"inspection = kind %q note %q, want complete and %q",
+			inspected.Kind,
+			inspected.CompletionNote,
+			wantNote,
+		)
+	}
+	actual := readArtifact(t, repository)
+	if !strings.Contains(actual, "Status: complete\n") {
+		t.Errorf("artifact status was not completed:\n%s", actual)
+	}
+	if !strings.Contains(actual, "Completion-Note: "+wantNote+"\n") {
+		t.Errorf("artifact did not retain the blocker note:\n%s", actual)
+	}
+	if strings.Contains(actual, "Blocked-From:") ||
+		strings.Contains(actual, "Blocker-Reason:") {
+		t.Errorf("blocked-only fields remained after completion:\n%s", actual)
+	}
+	followUp := filepath.Join(
+		repository,
+		"docs",
+		"higurashi",
+		"requirements",
+		"FOLLOW-123.md",
+	)
+	followUpContent, err := os.ReadFile(followUp)
+	if err != nil {
+		t.Fatalf("read generated follow-up requirement: %v", err)
+	}
+	if !strings.Contains(string(followUpContent), "# FOLLOW-123") ||
+		!strings.Contains(string(followUpContent), "B-001") ||
+		!strings.Contains(string(followUpContent), "Severity: high") ||
+		!strings.Contains(string(followUpContent), "Minimum acceptance") {
+		t.Errorf("follow-up requirement lost blocker context:\n%s", followUpContent)
 	}
 }
 
@@ -445,21 +550,23 @@ func TestTransitionRequiresExpectedHashArgument(t *testing.T) {
 }
 
 type transitionJSONResult struct {
-	SchemaVersion         int    `json:"schemaVersion"`
-	Command               string `json:"command"`
-	OK                    bool   `json:"ok"`
-	Kind                  string `json:"kind"`
-	Message               string `json:"message"`
-	ProjectRoot           string `json:"projectRoot"`
-	WorkItemID            string `json:"workItemId"`
-	ArtifactPath          string `json:"artifactPath"`
-	ArtifactStatus        string `json:"artifactStatus"`
-	ArtifactHash          string `json:"artifactHash"`
-	BlockedFrom           string `json:"blockedFrom"`
-	RepairRound           *int   `json:"repairRound"`
-	HandoffPath           string `json:"handoffPath"`
-	HandoffValidation     string `json:"handoffValidation"`
-	AuthorizationRequired *bool  `json:"authorizationRequired"`
+	SchemaVersion         int      `json:"schemaVersion"`
+	Command               string   `json:"command"`
+	OK                    bool     `json:"ok"`
+	Kind                  string   `json:"kind"`
+	Message               string   `json:"message"`
+	ProjectRoot           string   `json:"projectRoot"`
+	WorkItemID            string   `json:"workItemId"`
+	ArtifactPath          string   `json:"artifactPath"`
+	ArtifactStatus        string   `json:"artifactStatus"`
+	ArtifactHash          string   `json:"artifactHash"`
+	BlockedFrom           string   `json:"blockedFrom"`
+	CompletionNote        string   `json:"completionNote"`
+	FollowUpRequirements  []string `json:"followUpRequirements"`
+	RepairRound           *int     `json:"repairRound"`
+	HandoffPath           string   `json:"handoffPath"`
+	HandoffValidation     string   `json:"handoffValidation"`
+	AuthorizationRequired *bool    `json:"authorizationRequired"`
 	Progress              struct {
 		Completed int `json:"completed"`
 		Pending   int `json:"pending"`
@@ -475,6 +582,45 @@ func runTransitionJSON(
 	expectedHash string,
 	reason string,
 ) (int, transitionJSONResult, string) {
+	return runTransitionJSONWithFlags(
+		t,
+		workingDirectory,
+		workItemID,
+		targetStatus,
+		expectedHash,
+		reason,
+		nil,
+	)
+}
+
+func runTransitionJSONWithDeferrals(
+	t *testing.T,
+	workingDirectory string,
+	workItemID string,
+	targetStatus string,
+	expectedHash string,
+	deferredBlocker string,
+) (int, transitionJSONResult, string) {
+	return runTransitionJSONWithFlags(
+		t,
+		workingDirectory,
+		workItemID,
+		targetStatus,
+		expectedHash,
+		"",
+		[]string{deferredBlocker},
+	)
+}
+
+func runTransitionJSONWithFlags(
+	t *testing.T,
+	workingDirectory string,
+	workItemID string,
+	targetStatus string,
+	expectedHash string,
+	reason string,
+	deferredBlockers []string,
+) (int, transitionJSONResult, string) {
 	t.Helper()
 
 	args := []string{
@@ -486,6 +632,9 @@ func runTransitionJSON(
 	}
 	if reason != "" {
 		args = append(args, "--reason", reason)
+	}
+	for _, deferredBlocker := range deferredBlockers {
+		args = append(args, "--defer-blocker", deferredBlocker)
 	}
 	args = append(args, "--json")
 
@@ -515,6 +664,26 @@ func runTransitionJSON(
 		)
 	}
 	return exitCode, result, stderr.String()
+}
+
+func deferredRepairHandoff() string {
+	return `# Repair handoff for WORK-123
+
+Higurashi-Repair-Handoff: 1
+Work-Item: WORK-123
+Handoff-Status: ready
+Repair-Round: 1
+Next-Command: higurashi repair authorize WORK-123
+Candidate-Strategy: uncommitted
+
+## Blocker B-001
+Severity: high
+Originating-Reviewer: contract
+Violated-Contract: deferred work must retain durable evidence
+Evidence-Location: internal/repair/authorize.go:1
+Reproduction: go test ./internal/repair -run TestAuthorize
+Minimum-Acceptance: the focused authorization test passes
+`
 }
 
 func hashText(value string) string {

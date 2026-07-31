@@ -214,10 +214,11 @@ func loadOrPrepareConfig(
 			)
 		}
 		for _, runner := range runners {
-			enabled := runner == "opencode" &&
-				configuration.Runners.OpenCode.Enabled ||
-				runner == "claude-code" &&
-					configuration.Runners.ClaudeCode.Enabled
+			enabled := (runner == "opencode" &&
+				configuration.Runners.OpenCode.Enabled) ||
+				(runner == "claude-code" &&
+					configuration.Runners.ClaudeCode.Enabled) ||
+				(runner == "pi" && configuration.Runners.Pi.Enabled)
 			if !enabled {
 				return config.Config{}, false, fmt.Errorf(
 					"%w: selected runner %q is disabled in existing configuration",
@@ -251,12 +252,15 @@ func loadOrPrepareConfig(
 	}
 	configuration.Runners.OpenCode.Enabled = false
 	configuration.Runners.ClaudeCode.Enabled = false
+	configuration.Runners.Pi.Enabled = false
 	for _, runner := range runners {
 		switch runner {
 		case "opencode":
 			configuration.Runners.OpenCode.Enabled = true
 		case "claude-code":
 			configuration.Runners.ClaudeCode.Enabled = true
+		case "pi":
+			configuration.Runners.Pi.Enabled = true
 		}
 	}
 	return configuration, true, nil

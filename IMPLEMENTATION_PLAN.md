@@ -43,9 +43,9 @@ prototype:
 - fail-closed state transitions;
 - no commits, pushes, or pull requests unless separately requested.
 
-The workflow must run through both OpenCode and Claude Code without making
-either runner the source of truth. A future Codex adapter must fit without
-changing the core state machine or artifact format.
+The workflow must run through OpenCode, Claude Code, and Pi without making
+any runner the source of truth. Future adapters must fit without changing the
+core state machine or artifact format.
 
 ## 2. Fixed decisions
 
@@ -60,7 +60,7 @@ reopened unless implementation evidence proves them unworkable.
 6. **Repository configuration directory:** `.higurashi/`.
 7. **Default artifact directory:** `docs/higurashi/`.
 8. **Canonical explicit workflow command:** `higurashi-deliver`.
-9. **First runner adapters:** OpenCode and Claude Code.
+9. **First runner adapters:** OpenCode, Claude Code, and Pi.
 10. **Code intelligence:** CodeGraph is required for optimal mode.
 11. **Model execution:** delegated to the runner; the Go CLI never calls model
     providers directly.
@@ -448,6 +448,7 @@ For resumable work, return:
 higurashi transition WORK-123 implementing \
   --expected-hash HASH \
   [--reason TEXT] \
+  [--defer-blocker BLOCKER=FOLLOW-UP ...] \
   [--json]
 ```
 
@@ -460,7 +461,16 @@ Behavior:
 - update only machine-owned header fields;
 - write atomically in the artifact directory;
 - preserve unrelated artifact content byte-for-byte;
-- return the new status, hash, and progress.
+- return the new status, hash, progress, and any created follow-up requirements.
+
+Reviewers classify each durable blocker as `critical`, `high`, `medium`, or
+`low`. A user may complete a blocked item only by explicitly mapping every
+blocker to a follow-up work-item ID with `--defer-blocker`. Higurashi creates
+the follow-up requirement in the managed requirement directory, preserves the
+review evidence and minimum acceptance condition, and records the unresolved
+decision in `Completion-Note`. The original artifact may therefore be
+`complete` while still showing pending repair work; that pending work is not
+represented as fixed.
 
 #### `higurashi repair authorize`
 
@@ -657,7 +667,8 @@ The CLI owns:
 - `Status`;
 - `Repair-Round`;
 - `Blocked-From`;
-- `Blocker-Reason`.
+- `Blocker-Reason`;
+- `Completion-Note`.
 
 Agents own narrative sections and checklist markers.
 
@@ -683,6 +694,7 @@ planned      → implementing | blocked
 implementing → verifying | blocked
 verifying    → complete | blocked
 blocked      → implementing through `higurashi repair authorize`
+blocked      → complete through explicit follow-up deferral
 complete     → complete
 ```
 
@@ -693,7 +705,9 @@ Idempotently setting the current status succeeds without writing.
 - `planned` requires at least one checklist task.
 - `implementing` requires at least one checklist task.
 - `verifying` requires zero pending tasks.
-- `complete` requires current state `verifying` and zero pending tasks.
+- normal `complete` requires current state `verifying` and zero pending tasks;
+  human-ordered completion from `blocked` requires a valid unresolved-blocker
+  note and explicit follow-up disposition for every blocker.
 - `blocked` requires a nonterminal `Blocked-From` value and a bounded reason.
 - Normal transition cannot leave `blocked`; one validated handoff and explicit
   authorization are required.
@@ -1598,8 +1612,8 @@ The first release is complete when:
 - `inspect` and `transition` pass all state-contract tests;
 - APPLY batch count is configurable and enforced;
 - a missing/unhealthy required CodeGraph blocks preflight clearly;
-- a healthy CodeGraph works through both runners;
-- OpenCode and Claude Code adapters are generated deterministically;
+- a healthy CodeGraph works through all supported runners;
+- OpenCode, Claude Code, and Pi adapters are generated deterministically;
 - adapters do not modify default runner behavior;
 - the same fixture artifact resumes across runner sessions;
 - explicit refinement asks at most two bounded question batches, persists only
@@ -1618,8 +1632,8 @@ The first release is complete when:
 
 ## 21. Post-v0.1 roadmap
 
-Explicit refinement was pulled into the initial implementation. Both runners
-now expose:
+Explicit refinement was pulled into the initial implementation. All three
+supported adapters expose:
 
 ```text
 /higurashi-loop:refine WORK-123

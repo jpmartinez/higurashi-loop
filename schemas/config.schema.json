@@ -136,6 +136,9 @@
         },
         "claudeCode": {
           "$ref": "#/$defs/runner"
+        },
+        "pi": {
+          "$ref": "#/$defs/runner"
         }
       }
     }

@@ -193,6 +193,16 @@ If blockers exist and `maxRepairAttempts` permits repair:
 Do not expand scope. If blockers remain or the repair budget is exhausted,
 leave the artifact blocked.
 
+If the user explicitly decides that unresolved blockers are follow-up work,
+the coordinator may complete the blocked item only after the user names one
+follow-up work-item ID for every blocker. Reviewers must classify blockers as
+`critical`, `high`, `medium`, or `low`; severity informs the user's decision
+but never authorizes deferral. Invoke the guarded transition with one
+`--defer-blocker BLOCKER-ID=FOLLOW-UP-ID` mapping per blocker. Higurashi creates
+the follow-up requirements from the reviewer evidence and records the
+unresolved decision in the completed artifact. Do not present this as repaired
+or invent follow-up IDs on the user's behalf.
+
 When a blocked verification run cannot repair all blockers:
 
 1. Keep the review candidate uncommitted so later reviewers inspect the same

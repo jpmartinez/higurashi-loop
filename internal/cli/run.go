@@ -326,15 +326,15 @@ Usage:
   higurashi <command>
 
 Commands:
-  higurashi init --runner <opencode|claude-code> [--runner NAME ...] [--requirement-source PATH ...] [--project-root PATH] [--force-generated] [--json]
+	  higurashi init --runner <opencode|claude-code|pi> [--runner NAME ...] [--requirement-source PATH ...] [--project-root PATH] [--force-generated] [--json]
       Initialize project configuration, artifact directory, and selected adapters
   higurashi inspect WORK-123 [--json]
       Inspect requirement and artifact state without modifying files
-  higurashi transition WORK-123 STATUS --expected-hash HASH [--reason TEXT] [--json]
+  higurashi transition WORK-123 STATUS --expected-hash HASH [--reason TEXT] [--defer-blocker BLOCKER=FOLLOW-UP ...] [--json]
       Guard and atomically update an artifact status
   higurashi repair authorize WORK-123 [--json]
       Authorize one validated durable repair round
-  higurashi adapter <install|diff|update> <opencode|claude-code> [--json]
+  higurashi adapter <install|diff|update> <opencode|claude-code|pi> [--json]
       Safely render or inspect runner adapter files
   higurashi models <show|set|validate> [--runner opencode] [OPTIONS]
       Show, configure, or validate role-specific runner models

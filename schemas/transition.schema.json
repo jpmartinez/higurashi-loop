@@ -28,6 +28,8 @@
         "stale_hash",
         "illegal_transition",
         "invalid_artifact",
+        "invalid_repair_state",
+        "follow_up_write_failed",
         "write_failed",
         "unknown",
         "missing_requirement_source",
@@ -84,6 +86,24 @@
         "implementing",
         "verifying"
       ]
+    },
+    "completionNote": {
+      "type": "string",
+      "minLength": 1
+    },
+    "followUpRequirements": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9]*(-[A-Z0-9][A-Z0-9._-]*)$"
+      }
+    },
+    "changedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "progress": {
       "$ref": "#/$defs/progress"

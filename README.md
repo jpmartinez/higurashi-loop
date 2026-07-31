@@ -19,7 +19,7 @@ CLI can be downloaded from GitHub Releases, built from source, or installed
 with Go, and currently provides:
 
 ```text
-higurashi init --runner <opencode|claude-code> [--runner NAME ...] [--requirement-source PATH ...] [--project-root PATH] [--force-generated] [--json]
+higurashi init --runner <opencode|claude-code|pi> [--runner NAME ...] [--requirement-source PATH ...] [--project-root PATH] [--force-generated] [--json]
 higurashi help
 higurashi version
 higurashi config validate [--json]
@@ -27,15 +27,15 @@ higurashi config requirements set PATH [PATH ...] [--json]
 higurashi requirements import WORK-123 (--from PATH | --stdin) [--json]
 higurashi doctor [--json]
 higurashi inspect WORK-123 [--json]
-higurashi transition WORK-123 STATUS --expected-hash HASH [--reason TEXT] [--json]
+higurashi transition WORK-123 STATUS --expected-hash HASH [--reason TEXT] [--defer-blocker BLOCKER=FOLLOW-UP ...] [--json]
 higurashi repair authorize WORK-123 [--json]
-higurashi adapter <install|diff|update> <opencode|claude-code> [--json]
-higurashi models <show|set|validate> [--runner opencode] [OPTIONS]
+higurashi adapter <install|diff|update> <opencode|claude-code|pi> [--json]
+higurashi models <show|set|validate> [--runner <opencode|claude-code|pi>] [OPTIONS]
 higurashi verification suggest [--json]
 ```
 
-Project-local OpenCode and Claude Code adapter generation is implemented. The
-Claude Code adapter remains provisional until its trust-dependent live MCP
+Project-local OpenCode, Claude Code, and Pi adapter generation is implemented.
+The Claude Code adapter remains provisional until its trust-dependent live MCP
 smoke test is run with an authenticated account.
 
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the complete contract
@@ -65,9 +65,10 @@ development tools must be documented here when introduced.
 - A Git repository or worktree.
 - The `higurashi` binary.
 - At least one supported runner:
-- OpenCode 1.x (tested with 1.18.9); or
+  - OpenCode 1.x (tested with 1.18.9);
   - a current Claude Code release supporting plugin skills, custom-agent
-    `maxTurns` and `effort`, and project MCP configuration.
+    `maxTurns` and `effort`, and project MCP configuration; or
+  - a current Pi release supporting project-local skills and prompt templates.
 - CodeGraph CLI and a healthy project-local `.codegraph/` index when the
   configured CodeGraph mode is `required`, which is the planned default.
 - Permission to add project-local Higurashi configuration, artifact, skill,
@@ -94,7 +95,7 @@ place it in a directory on `PATH`.
 For example, on Linux amd64:
 
 ```text
-version=v0.1.0-alpha.5
+version=v0.1.0-alpha.6
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/higurashi_${version}_linux_amd64.tar.gz"
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/checksums.txt"
 sha256sum --check --ignore-missing checksums.txt
@@ -135,7 +136,7 @@ mise exec -- go build -o ./bin/higurashi ./cmd/higurashi
 ### Install into the Go binary directory
 
 ```text
-go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.5
+go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.6
 ```
 
 This installs `higurashi` into `GOBIN`, or into the current Go environment's
@@ -248,7 +249,8 @@ validated ID and `.md`; with defaults, `WORK-123` maps to
 artifact returns `resume`, or terminal `complete`, with its status, exact-byte
 SHA-256 hash, checklist progress, and first pending task. Invalid or ambiguous
 machine fields, duplicate task IDs, illegal progress states, and symlink path
-escapes fail closed. See the artifact contract in
+escapes fail closed. Human-ordered completion retains an unresolved blocker
+note and may still show pending repair work. See the artifact contract in
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md#8-artifact-contract).
 
 A blocked artifact uses a machine-owned `Repair-Round` field; legacy artifacts
@@ -261,6 +263,21 @@ interrupted authorization left a consumed handoff and blocked artifact. JSON
 includes the current round, handoff path and validation, blocker count,
 candidate strategy, authorization requirement, and the one exact next command
 only when authorization or recovery is actually possible.
+
+Reviewers classify each blocker as `critical`, `high`, `medium`, or `low`.
+When a user decides that every blocker should become follow-up work, complete
+the item with an explicit mapping for each blocker:
+
+```text
+higurashi transition WORK-123 complete \
+  --expected-hash SHA256_FROM_INSPECT \
+  --defer-blocker B-001=FOLLOW-123
+```
+
+Higurashi creates the follow-up requirement under the managed requirement
+directory, preserves the review evidence and minimum acceptance condition, and
+records the blocker severity and follow-up ID in `Completion-Note`. A blocked
+item cannot be completed without an explicit follow-up for every blocker.
 
 Guard and update an existing artifact status:
 
@@ -278,7 +295,8 @@ and artifact validation. It rejects a stale expected hash with exit code `7`
 and illegal state changes or artifact invariants with exit code `5`. Entering
 `blocked` records the current nonterminal status in `Blocked-From` and requires
 a bounded, single-line reason. A normal transition cannot leave `blocked`;
-repair resumption requires the explicit guarded authorization command.
+repair resumption requires the explicit guarded authorization command. The only
+other exit is the user-directed follow-up deferral described above.
 
 Successful changes replace only the machine-owned header fields through a
 same-directory temporary file and atomic rename. Narrative bytes, checklist
@@ -367,6 +385,7 @@ higurashi adapter diff opencode
 higurashi adapter update opencode
 
 higurashi adapter install claude-code
+higurashi adapter install pi
 ```
 
 For OpenCode, installation generates:
@@ -514,6 +533,33 @@ and CodeGraph tools and explicitly deny write, shell, delegation, and worktree
 tools. The `higurashi` and `codegraph` executables must be on Claude Code's
 `PATH`.
 
+For Pi, installation generates native project-local skills and prompt
+templates:
+
+```text
+.pi/skills/higurashi-deliver/SKILL.md
+.pi/skills/higurashi-deliver/references/artifact-contract.md
+.pi/skills/higurashi-deliver/references/reviewer-contract.md
+.pi/skills/higurashi-refine/SKILL.md
+.pi/prompts/higurashi-deliver.md
+.pi/prompts/higurashi-refine.md
+```
+
+Pi discovers these files natively after the project is trusted; Higurashi does
+not require or install a Pi extension. Invoke the generated prompts with:
+
+```text
+/higurashi-refine WORK-123
+/higurashi-deliver WORK-123
+/higurashi-deliver WORK-123 --plan-only
+/higurashi-deliver WORK-123 --repair
+```
+
+The Pi adapter runs the coordinator in the current Pi session. A trusted
+subagent extension is optional when isolated Higurashi role processes and
+independent reviewer sessions are desired; Higurashi deliberately does not
+select or install a third-party extension for you.
+
 Generated files carry the generator version, template identifier, and canonical
 source hash. `.higurashi/generated.json` records their exact content hashes.
 Installation and update refuse unrecognized files and locally modified
@@ -524,7 +570,9 @@ The canonical protocol prohibits agents from weakening requirements,
 instructions, configuration, schemas, verification policy, generated ownership
 markers, or existing tests to manufacture success. It requires the exact
 anti-bypass rule in every subagent prompt, and the renderer rejects future agent
-templates that omit that rule. Both adapters enforce shallow delegation.
+templates that omit that rule. OpenCode and Claude Code enforce shallow
+delegation through their native agent adapters; Pi preserves the same contract
+in its prompt and skill surfaces.
 Coordinators do not implement directly, workers cannot delegate, and reviewers
 cannot edit or run shell commands. Role-owned artifact narrative, checklist,
 and evidence updates remain allowed.
@@ -547,10 +595,10 @@ higurashi init --runner opencode \
   --requirement-source "requirements/Product requirements.md"
 ```
 
-To install both supported adapters:
+To install all three supported adapters:
 
 ```text
-higurashi init --runner opencode --runner claude-code
+higurashi init --runner opencode --runner claude-code --runner pi
 ```
 
 Initialization creates:
@@ -559,7 +607,7 @@ Initialization creates:
 - the configured `docs/higurashi` artifact directory;
 - the default managed `docs/higurashi/requirements` requirement directory;
 - `.higurashi/generated.json`;
-- only the selected project-local runner skills, commands, and agents.
+- only the selected project-local runner skills, prompts, commands, and agents.
 
 It never changes global runner settings or overwrites user-owned files.
 Repeating the same command is idempotent. If a recognized generated file was

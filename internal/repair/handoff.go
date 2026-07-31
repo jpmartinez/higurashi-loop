@@ -19,18 +19,20 @@ const (
 )
 
 var (
-	ErrInvalidHandoff = errors.New("invalid repair handoff")
-	blockerIDPattern  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	blockerHeading    = regexp.MustCompile(`^## Blocker ([A-Za-z0-9][A-Za-z0-9._-]*)$`)
+	ErrInvalidHandoff  = errors.New("invalid repair handoff")
+	ErrInvalidDeferral = errors.New("invalid blocker deferral")
+	blockerIDPattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	blockerHeading     = regexp.MustCompile(`^## Blocker ([A-Za-z0-9][A-Za-z0-9._-]*)$`)
 )
 
 type Blocker struct {
-	ID                  string
-	OriginatingReviewer string
-	ViolatedContract    string
-	EvidenceLocation    string
-	Reproduction        string
-	MinimumAcceptance   string
+	ID                  string `json:"id"`
+	Severity            string `json:"severity"`
+	OriginatingReviewer string `json:"originatingReviewer"`
+	ViolatedContract    string `json:"violatedContract"`
+	EvidenceLocation    string `json:"evidenceLocation"`
+	Reproduction        string `json:"reproduction"`
+	MinimumAcceptance   string `json:"minimumAcceptance"`
 }
 
 type Document struct {
@@ -164,6 +166,7 @@ func Parse(
 			return nil
 		}
 		required := []string{
+			"Severity",
 			"Originating-Reviewer",
 			"Violated-Contract",
 			"Evidence-Location",
@@ -178,8 +181,18 @@ func Parse(
 				)
 			}
 		}
+		if !validSeverity(currentFields["Severity"]) {
+			return invalid(
+				fmt.Sprintf(
+					"blocker %s has unsupported Severity %q",
+					currentID,
+					currentFields["Severity"],
+				),
+			)
+		}
 		blockers = append(blockers, Blocker{
 			ID:                  currentID,
+			Severity:            currentFields["Severity"],
 			OriginatingReviewer: currentFields["Originating-Reviewer"],
 			ViolatedContract:    currentFields["Violated-Contract"],
 			EvidenceLocation:    currentFields["Evidence-Location"],
@@ -238,6 +251,7 @@ func Parse(
 		if inBlockers {
 			fields = currentFields
 			allowed = map[string]bool{
+				"Severity":             true,
 				"Originating-Reviewer": true,
 				"Violated-Contract":    true,
 				"Evidence-Location":    true,
@@ -325,6 +339,124 @@ func Parse(
 	}, nil
 }
 
+// Deferral names the follow-up work item that owns one unresolved blocker.
+type Deferral struct {
+	BlockerID  string
+	FollowUpID string
+}
+
+// ValidateDeferrals requires an explicit follow-up for every blocker in a
+// ready handoff. A user may defer any severity, but no blocker is implicit.
+func ValidateDeferrals(document Document, deferrals []Deferral) error {
+	if document.Status != "ready" {
+		return fmt.Errorf(
+			"%w: blocker deferral requires a ready handoff",
+			ErrInvalidDeferral,
+		)
+	}
+	if len(deferrals) != len(document.Blockers) {
+		return fmt.Errorf(
+			"%w: provide exactly one follow-up for every blocker",
+			ErrInvalidDeferral,
+		)
+	}
+	known := make(map[string]Blocker, len(document.Blockers))
+	for _, blocker := range document.Blockers {
+		known[blocker.ID] = blocker
+	}
+	seen := make(map[string]bool, len(deferrals))
+	for _, deferral := range deferrals {
+		if !blockerIDPattern.MatchString(deferral.BlockerID) ||
+			placeholder(deferral.BlockerID) {
+			return fmt.Errorf(
+				"%w: invalid blocker ID %q",
+				ErrInvalidDeferral,
+				deferral.BlockerID,
+			)
+		}
+		if !blockerIDPattern.MatchString(deferral.FollowUpID) ||
+			placeholder(deferral.FollowUpID) {
+			return fmt.Errorf(
+				"%w: invalid follow-up ID %q",
+				ErrInvalidDeferral,
+				deferral.FollowUpID,
+			)
+		}
+		if _, ok := known[deferral.BlockerID]; !ok {
+			return fmt.Errorf(
+				"%w: unknown blocker %q",
+				ErrInvalidDeferral,
+				deferral.BlockerID,
+			)
+		}
+		if seen[deferral.BlockerID] {
+			return fmt.Errorf(
+				"%w: blocker %q was supplied more than once",
+				ErrInvalidDeferral,
+				deferral.BlockerID,
+			)
+		}
+		seen[deferral.BlockerID] = true
+	}
+	for _, blocker := range document.Blockers {
+		if !seen[blocker.ID] {
+			return fmt.Errorf(
+				"%w: blocker %q has no follow-up",
+				ErrInvalidDeferral,
+				blocker.ID,
+			)
+		}
+	}
+	return nil
+}
+
+// CompletionNote renders the durable audit note for a completed deferral.
+func CompletionNote(document Document, deferrals []Deferral) string {
+	followUps := make(map[string]string, len(deferrals))
+	for _, deferral := range deferrals {
+		followUps[deferral.BlockerID] = deferral.FollowUpID
+	}
+	parts := make([]string, 0, len(document.Blockers))
+	for _, blocker := range document.Blockers {
+		parts = append(parts, fmt.Sprintf(
+			"%s (%s) deferred as follow-up %s",
+			blocker.ID,
+			blocker.Severity,
+			followUps[blocker.ID],
+		))
+	}
+	return "Human-ordered completion; unresolved blocker " +
+		strings.Join(parts, "; unresolved blocker ")
+}
+
+// FollowUpBody retains the review evidence needed to execute a deferred
+// blocker as an independent requirement.
+func FollowUpBody(workItemID, followUpID string, blocker Blocker) []byte {
+	return []byte(fmt.Sprintf(`# %s — Follow up for %s blocker %s
+
+This follow-up was created from a user-approved deferred blocker.
+
+## Problem
+
+%s
+
+## Evidence
+
+Severity: %s
+Reviewer: %s
+Location: %s
+
+## Reproduction
+
+%s
+
+## Minimum acceptance
+
+%s`, followUpID, workItemID, blocker.ID, blocker.ViolatedContract,
+		blocker.Severity, blocker.OriginatingReviewer, blocker.EvidenceLocation,
+		blocker.Reproduction, blocker.MinimumAcceptance))
+}
+
 func placeholder(value string) bool {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" || trimmed != value {
@@ -337,6 +469,15 @@ func placeholder(value string) bool {
 	return strings.Contains(trimmed, "{{") ||
 		strings.Contains(trimmed, "}}") ||
 		(strings.Contains(trimmed, "<") && strings.Contains(trimmed, ">"))
+}
+
+func validSeverity(value string) bool {
+	switch value {
+	case "critical", "high", "medium", "low":
+		return true
+	default:
+		return false
+	}
 }
 
 func invalid(message string) error {

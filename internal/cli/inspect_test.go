@@ -509,6 +509,7 @@ type inspectJSONResult struct {
 	ArtifactStatus        string   `json:"artifactStatus"`
 	ArtifactHash          string   `json:"artifactHash"`
 	BlockedFrom           string   `json:"blockedFrom"`
+	CompletionNote        string   `json:"completionNote"`
 	RepairRound           *int     `json:"repairRound"`
 	HandoffPath           string   `json:"handoffPath"`
 	HandoffValidation     string   `json:"handoffValidation"`
@@ -574,6 +575,7 @@ Next-Command: higurashi repair authorize WORK-123
 Candidate-Strategy: uncommitted
 
 ## Blocker B-001
+Severity: high
 Originating-Reviewer: contract
 Violated-Contract: durable evidence must survive sessions
 Evidence-Location: internal/repair/authorize.go:1

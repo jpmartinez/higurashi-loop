@@ -84,6 +84,7 @@ func Transition(
 	} else {
 		next.BlockedFrom = ""
 		next.BlockerReason = ""
+		next.CompletionNote = ""
 	}
 	if err := validateDocument(next); err != nil {
 		return Change{}, fmt.Errorf("%w: %v", ErrIllegalTransition, err)
@@ -94,6 +95,7 @@ func Transition(
 		next.Status,
 		next.BlockedFrom,
 		next.BlockerReason,
+		next.CompletionNote,
 		next.RepairRound,
 	)
 	if err != nil {
@@ -102,6 +104,58 @@ func Transition(
 	parsed, err := Parse(content, snapshot.WorkItemID)
 	if err != nil {
 		return Change{}, fmt.Errorf("validate rendered artifact: %w", err)
+	}
+	return Change{
+		Document: parsed,
+		Content:  content,
+		Changed:  true,
+	}, nil
+}
+
+// CompleteWithNote records an explicit human decision to complete blocked
+// work while retaining the unresolved blocker decision in machine-owned text.
+// The caller must validate the follow-up disposition before invoking it.
+func CompleteWithNote(snapshot Snapshot, note string) (Change, error) {
+	current := snapshot.Document
+	if current.Status == "complete" && current.CompletionNote != "" {
+		return Change{
+			Document: current,
+			Content:  append([]byte(nil), snapshot.Content...),
+			Changed:  false,
+		}, nil
+	}
+	if current.Status != "blocked" {
+		return Change{}, fmt.Errorf(
+			"%w: human-ordered completion requires Status blocked",
+			ErrIllegalTransition,
+		)
+	}
+	if err := validateCompletionNote(note); err != nil {
+		return Change{}, fmt.Errorf("%w: %v", ErrIllegalTransition, err)
+	}
+
+	next := current
+	next.Status = "complete"
+	next.BlockedFrom = ""
+	next.BlockerReason = ""
+	next.CompletionNote = note
+	if err := validateDocument(next); err != nil {
+		return Change{}, fmt.Errorf("%w: %v", ErrIllegalTransition, err)
+	}
+	content, err := rewriteMachineFields(
+		snapshot.Content,
+		next.Status,
+		next.BlockedFrom,
+		next.BlockerReason,
+		next.CompletionNote,
+		next.RepairRound,
+	)
+	if err != nil {
+		return Change{}, err
+	}
+	parsed, err := Parse(content, snapshot.WorkItemID)
+	if err != nil {
+		return Change{}, fmt.Errorf("validate human-ordered artifact: %w", err)
 	}
 	return Change{
 		Document: parsed,
@@ -143,12 +197,14 @@ func rewriteMachineFields(
 	status string,
 	blockedFrom string,
 	blockerReason string,
+	completionNote string,
 	repairRound int,
 ) ([]byte, error) {
 	lines := splitRawLines(string(content))
 	statusIndex := -1
 	blockedFromIndex := -1
 	blockerReasonIndex := -1
+	completionNoteIndex := -1
 	repairRoundIndex := -1
 	for index, line := range lines {
 		name, _, ok := machineField(line.content)
@@ -162,6 +218,8 @@ func rewriteMachineFields(
 			blockedFromIndex = index
 		case "Blocker-Reason":
 			blockerReasonIndex = index
+		case "Completion-Note":
+			completionNoteIndex = index
 		case "Repair-Round":
 			repairRoundIndex = index
 		}
@@ -177,6 +235,9 @@ func rewriteMachineFields(
 	}
 	if blockerReasonIndex >= 0 {
 		remove[blockerReasonIndex] = true
+	}
+	if completionNoteIndex >= 0 {
+		remove[completionNoteIndex] = true
 	}
 	if repairRoundIndex >= 0 {
 		remove[repairRoundIndex] = true
@@ -200,6 +261,9 @@ func rewriteMachineFields(
 			if blockedFrom != "" {
 				rendered.WriteString("Blocked-From: " + blockedFrom + ending)
 				rendered.WriteString("Blocker-Reason: " + blockerReason + ending)
+			}
+			if completionNote != "" {
+				rendered.WriteString("Completion-Note: " + completionNote + ending)
 			}
 		}
 	}
@@ -244,6 +308,7 @@ func AuthorizeRepair(snapshot Snapshot, round int) (Change, error) {
 		next.Status,
 		next.BlockedFrom,
 		next.BlockerReason,
+		next.CompletionNote,
 		next.RepairRound,
 	)
 	if err != nil {

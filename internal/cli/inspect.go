@@ -244,6 +244,7 @@ func runInspect(
 		envelope.ArtifactStatus = document.Status
 		envelope.ArtifactHash = document.Hash
 		envelope.BlockedFrom = document.BlockedFrom
+		envelope.CompletionNote = document.CompletionNote
 		envelope.Progress = document.Progress
 		repairRound := document.RepairRound
 		envelope.RepairRound = &repairRound
@@ -292,6 +293,7 @@ func runInspect(
 			envelope.HandoffValidation = validation.State
 			if validation.Handoff.SchemaVersion != 0 {
 				envelope.BlockerCount = len(validation.Handoff.Blockers)
+				envelope.Blockers = validation.Handoff.Blockers
 				envelope.CandidateStrategy =
 					validation.Handoff.CandidateStrategy
 			}
@@ -454,6 +456,9 @@ func writeInspectEnvelope(
 		}
 		if envelope.BlockedFrom != "" {
 			fmt.Fprintf(stdout, "Blocked from: %s\n", envelope.BlockedFrom)
+		}
+		if envelope.CompletionNote != "" {
+			fmt.Fprintf(stdout, "Completion note: %s\n", envelope.CompletionNote)
 		}
 		if envelope.RepairRound != nil {
 			fmt.Fprintf(stdout, "Repair round: %d\n", *envelope.RepairRound)

@@ -205,6 +205,21 @@ var claudeCodeAgentSources = []sourceSpec{
 	},
 }
 
+var piSources = []sourceSpec{
+	{
+		filesystem:  adapters.Files,
+		templateID:  "adapters/pi/prompts/higurashi-deliver.md.tmpl",
+		sourceName:  "pi/prompts/higurashi-deliver.md.tmpl",
+		destination: ".pi/prompts/higurashi-deliver.md",
+	},
+	{
+		filesystem:  adapters.Files,
+		templateID:  "adapters/pi/prompts/higurashi-refine.md.tmpl",
+		sourceName:  "pi/prompts/higurashi-refine.md.tmpl",
+		destination: ".pi/prompts/higurashi-refine.md",
+	},
+}
+
 // Build renders the canonical protocol for one supported runner destination.
 func Build(adapter, generatorVersion string) (Bundle, error) {
 	return BuildConfigured(
@@ -276,6 +291,8 @@ func BuildConfigured(
 			)
 			sources = append(sources, standaloneAgent)
 		}
+	case "pi":
+		sources = append(sources, piSources...)
 	}
 	for _, specification := range sources {
 		source, err := fs.ReadFile(
@@ -410,6 +427,8 @@ func adapterSkillDirectory(adapter, skillName string) (string, error) {
 		return path.Join(".agents/skills", skillName), nil
 	case "claude-code":
 		return path.Join(".claude/skills", skillName), nil
+	case "pi":
+		return path.Join(".pi/skills", skillName), nil
 	default:
 		return "", fmt.Errorf("%w: %s", ErrUnknownAdapter, adapter)
 	}

@@ -71,6 +71,7 @@ type Command struct {
 type Runners struct {
 	OpenCode   Runner `json:"opencode"`
 	ClaudeCode Runner `json:"claudeCode"`
+	Pi         Runner `json:"pi"`
 }
 
 type Runner struct {
@@ -127,6 +128,10 @@ func Defaults() Config {
 				Enabled: true,
 				Models:  InheritedModels(),
 			},
+			Pi: Runner{
+				Enabled: true,
+				Models:  InheritedModels(),
+			},
 		},
 	}
 }
@@ -150,6 +155,8 @@ func (configuration Config) Runner(name string) (Runner, bool) {
 		return configuration.Runners.OpenCode, true
 	case "claude-code":
 		return configuration.Runners.ClaudeCode, true
+	case "pi":
+		return configuration.Runners.Pi, true
 	default:
 		return Runner{}, false
 	}

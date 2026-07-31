@@ -54,7 +54,8 @@
           "type": "string",
           "enum": [
             "opencode",
-            "claude-code"
+            "claude-code",
+            "pi"
           ]
         },
         "templateId": {

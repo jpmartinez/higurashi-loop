@@ -15,10 +15,11 @@ import (
 )
 
 const (
-	SchemaVersion    = 1
-	maxArtifactBytes = 4 << 20
-	maxBlockerBytes  = 512
-	checklistHeading = "## Ordered vertical TDD checklist"
+	SchemaVersion          = 1
+	maxArtifactBytes       = 4 << 20
+	maxBlockerBytes        = 512
+	maxCompletionNoteBytes = 2048
+	checklistHeading       = "## Ordered vertical TDD checklist"
 )
 
 var taskPattern = regexp.MustCompile(
@@ -26,14 +27,15 @@ var taskPattern = regexp.MustCompile(
 )
 
 type Document struct {
-	SchemaVersion int
-	Status        string
-	BlockedFrom   string
-	BlockerReason string
-	RepairRound   int
-	Hash          string
-	Tasks         []Task
-	Progress      Progress
+	SchemaVersion  int
+	Status         string
+	BlockedFrom    string
+	BlockerReason  string
+	CompletionNote string
+	RepairRound    int
+	Hash           string
+	Tasks          []Task
+	Progress       Progress
 }
 
 type Task struct {
@@ -171,6 +173,7 @@ func Parse(data []byte, expectedWorkItemID string) (Document, error) {
 	document.Status = fields["Status"]
 	document.BlockedFrom = fields["Blocked-From"]
 	document.BlockerReason = fields["Blocker-Reason"]
+	document.CompletionNote = fields["Completion-Note"]
 	if value := fields["Repair-Round"]; value != "" {
 		round, err := strconv.Atoi(value)
 		if err != nil || round < 0 || strconv.Itoa(round) != value {
@@ -265,6 +268,7 @@ func machineField(line string) (string, string, bool) {
 		"Status",
 		"Blocked-From",
 		"Blocker-Reason",
+		"Completion-Note",
 		"Repair-Round",
 	}
 	for _, name := range names {
@@ -353,11 +357,18 @@ func validateDocument(document Document) error {
 			document.Status,
 		)
 	}
-	if (document.Status == "verifying" || document.Status == "complete") &&
+	if document.Status == "verifying" &&
 		document.Progress.Pending != 0 {
 		return fmt.Errorf(
 			"Status %s requires zero pending tasks",
 			document.Status,
+		)
+	}
+	if document.Status == "complete" &&
+		document.Progress.Pending != 0 &&
+		document.CompletionNote == "" {
+		return errors.New(
+			"Status complete requires zero pending tasks unless Completion-Note records human-ordered deferral",
 		)
 	}
 
@@ -381,6 +392,16 @@ func validateDocument(document Document) error {
 			"Blocked-From and Blocker-Reason are valid only for Status blocked",
 		)
 	}
+	if document.CompletionNote != "" {
+		if document.Status != "complete" {
+			return errors.New(
+				"Completion-Note is valid only for Status complete",
+			)
+		}
+		if err := validateCompletionNote(document.CompletionNote); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -400,6 +421,24 @@ func validateBlockerReason(reason string) error {
 	for _, character := range reason {
 		if unicode.IsControl(character) {
 			return errors.New("Blocker-Reason must not contain control characters")
+		}
+	}
+	return nil
+}
+
+func validateCompletionNote(note string) error {
+	if len(note) > maxCompletionNoteBytes {
+		return fmt.Errorf(
+			"Completion-Note exceeds %d bytes",
+			maxCompletionNoteBytes,
+		)
+	}
+	if !utf8.ValidString(note) {
+		return errors.New("Completion-Note must be valid UTF-8")
+	}
+	for _, character := range note {
+		if unicode.IsControl(character) {
+			return errors.New("Completion-Note must not contain control characters")
 		}
 	}
 	return nil

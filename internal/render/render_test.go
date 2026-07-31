@@ -116,6 +116,47 @@ func TestOpenCodeBundleMatchesGoldenSources(t *testing.T) {
 	}
 }
 
+func TestPiBundleUsesNativeSkillsAndPromptTemplates(t *testing.T) {
+	bundle, err := render.Build("pi", "test")
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if len(bundle.Files) != 6 {
+		t.Fatalf("len(bundle.Files) = %d, want 6", len(bundle.Files))
+	}
+
+	files := make(map[string]string, len(bundle.Files))
+	for _, file := range bundle.Files {
+		files[file.Path] = string(file.Source)
+	}
+	for _, path := range []string{
+		".pi/skills/higurashi-deliver/SKILL.md",
+		".pi/skills/higurashi-deliver/references/artifact-contract.md",
+		".pi/skills/higurashi-deliver/references/reviewer-contract.md",
+		".pi/skills/higurashi-refine/SKILL.md",
+		".pi/prompts/higurashi-deliver.md",
+		".pi/prompts/higurashi-refine.md",
+	} {
+		if files[path] == "" {
+			t.Errorf("Pi bundle is missing %s", path)
+		}
+	}
+
+	requireContains(t, files[".pi/prompts/higurashi-deliver.md"],
+		"description:",
+		"argument-hint:",
+		"$ARGUMENTS",
+		"higurashi-deliver",
+		"subagent",
+	)
+	requireContains(t, files[".pi/prompts/higurashi-refine.md"],
+		"description:",
+		"argument-hint:",
+		"$ARGUMENTS",
+		"higurashi-refine",
+	)
+}
+
 func TestOpenCodeRoleContracts(t *testing.T) {
 	bundle, err := render.Build("opencode", "test")
 	if err != nil {

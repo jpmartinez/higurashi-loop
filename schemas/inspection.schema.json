@@ -89,6 +89,10 @@
         "verifying"
       ]
     },
+    "completionNote": {
+      "type": "string",
+      "minLength": 1
+    },
     "repairRound": {
       "type": "integer",
       "minimum": 0
@@ -110,6 +114,12 @@
     "blockerCount": {
       "type": "integer",
       "minimum": 0
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/blocker"
+      }
     },
     "authorizationRequired": {
       "type": "boolean"
@@ -332,6 +342,53 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "severity",
+        "originatingReviewer",
+        "violatedContract",
+        "evidenceLocation",
+        "reproduction",
+        "minimumAcceptance"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "originatingReviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "violatedContract": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidenceLocation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reproduction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minimumAcceptance": {
           "type": "string",
           "minLength": 1
         }
