@@ -228,6 +228,29 @@ For `repair_recovery_required`, run only the returned authorization command to
 finish the interrupted deterministic transition. A normal resume or
 `higurashi transition` must never authorize a repair.
 
+## COMMIT
+
+A delivery candidate stays uncommitted through VERIFY. Committing is an
+explicit post-completion action, not part of APPLY or VERIFY.
+
+Commit only after `higurashi inspect <ID> --json` reports `kind: complete` and
+the user explicitly authorizes the commit. A human-ordered completion with
+deferred blockers is eligible when inspection confirms `kind: complete` and
+the artifact's `Completion-Note` records the decision and named follow-up
+requirements. Preserve that note and the generated follow-up requirements in
+the committed candidate.
+
+Before committing, re-inspect the artifact, confirm that the working-tree
+candidate still matches the inspected artifact and contains no unrelated
+changes, and run the repository's configured final checks. If the artifact
+hash or candidate changes, stop and inspect again. Commit only the verified
+candidate with a clear message that identifies the completed work item.
+
+Never commit a `blocked`, `handoff_required`, `repair_ready`, or
+`repair_recovery_required` artifact, or any other non-complete inspection
+result, even when the user asks to commit it. Do not push, publish, release,
+or create remote changes unless the user separately authorizes that action.
+
 ## Reporting
 
 Report the work-item ID, final status, artifact path and hash, completed and
@@ -235,6 +258,6 @@ pending counts, exact verification evidence, blockers, warnings, and the next
 legal action. A blocked terminal response must contain exactly one executable
 next command. A non-terminal `repair_plan_required` response instead offers the
 same-conversation retry reply and never exposes the authorization command. Do
-not recommend committing a blocked uncommitted candidate. Do not commit, push,
-publish, release, or create remote changes unless the user separately
-authorizes that action.
+not recommend committing a blocked uncommitted candidate. For a complete
+artifact, report whether the candidate was committed or remains ready for the
+user's explicit commit authorization.

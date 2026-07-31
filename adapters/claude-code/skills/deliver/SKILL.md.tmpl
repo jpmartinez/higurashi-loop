@@ -102,11 +102,27 @@ may reply `try again`.
    `repair_recovery_required`, run only the returned command. A normal invocation
    never authorizes repair.
 
+## Commit a completed candidate
+
+The candidate remains uncommitted during delivery. After the user explicitly
+authorizes a commit, run `higurashi inspect <ID> --json` again and continue
+only when it reports `kind: complete`. A human-ordered completion with
+deferred blockers is eligible when the artifact has `Completion-Note` and the
+named follow-up requirements are present. Confirm the working-tree candidate
+matches the inspected artifact, contains no unrelated changes, and has passed
+the configured final checks before running `git commit`.
+
+Never commit a `blocked`, `handoff_required`, `repair_ready`, or
+`repair_recovery_required` artifact, or any other non-complete result. A commit
+does not authorize a push, publication, release, or other remote change.
+
 Every dynamic subagent prompt must contain the exact anti-bypass sentence above.
 Use only the four Higurashi agents. The coordinator may write only the exact
 expected repair handoff, never implementation or the primary artifact. Never
-create a temporary worktree, recommend committing a blocked candidate, commit,
-or push.
+create a temporary worktree or recommend committing a blocked candidate.
+
+For a complete artifact, commit only under the completed-candidate rule above;
+never push without separate authorization.
 
 For a non-terminal normal delivery, tell the user they may reply `try again`
 after resolving the blocker.

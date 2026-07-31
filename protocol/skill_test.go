@@ -81,6 +81,27 @@ func TestCanonicalSkillContainsCompleteRunnerNeutralContract(t *testing.T) {
 	}
 }
 
+func TestCanonicalSkillDefinesGuardedCommitForCompleteArtifacts(t *testing.T) {
+	content, err := os.ReadFile("higurashi-deliver/SKILL.md")
+	if err != nil {
+		t.Fatalf("read canonical skill: %v", err)
+	}
+	text := string(content)
+	for _, value := range []string{
+		"Commit only after `higurashi inspect <ID> --json` reports `kind: complete`",
+		"the user explicitly authorizes the commit",
+		"A human-ordered completion with",
+		"deferred blockers is eligible",
+		"Completion-Note",
+		"Never commit a `blocked`, `handoff_required`, `repair_ready`, or",
+		"Do not push, publish, release,",
+	} {
+		if !strings.Contains(text, value) {
+			t.Errorf("canonical commit policy is missing %q", value)
+		}
+	}
+}
+
 func TestCanonicalSkillFrontmatterIsPortableAndMinimal(t *testing.T) {
 	content, err := os.ReadFile("higurashi-deliver/SKILL.md")
 	if err != nil {

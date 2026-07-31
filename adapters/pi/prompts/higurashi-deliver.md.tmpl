@@ -16,3 +16,9 @@ contract. The Pi adapter uses the current Pi session as its coordinator and
 does not require a subagent extension. If a trusted Pi subagent extension is
 installed, it may be used for the named Higurashi roles, but it must preserve
 the same one-task, read-only reviewer, bounded-loop, and anti-bypass contracts.
+
+When the user explicitly authorizes a commit, follow the skill's completed-
+candidate rule: commit only after inspection reports `kind: complete`, including
+an explicitly deferred completion with its `Completion-Note` and follow-up
+requirements. Never commit a blocked or repair-state artifact, and never push,
+publish, or release without separate authorization.

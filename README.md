@@ -95,7 +95,7 @@ place it in a directory on `PATH`.
 For example, on Linux amd64:
 
 ```text
-version=v0.1.0-alpha.6
+version=v0.1.0-alpha.7
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/higurashi_${version}_linux_amd64.tar.gz"
 curl -LO "https://github.com/jpmartinez/higurashi-loop/releases/download/${version}/checksums.txt"
 sha256sum --check --ignore-missing checksums.txt
@@ -136,7 +136,7 @@ mise exec -- go build -o ./bin/higurashi ./cmd/higurashi
 ### Install into the Go binary directory
 
 ```text
-go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.6
+go install github.com/jpmartinez/higurashi-loop/cmd/higurashi@v0.1.0-alpha.7
 ```
 
 This installs `higurashi` into `GOBIN`, or into the current Go environment's
@@ -277,7 +277,10 @@ higurashi transition WORK-123 complete \
 Higurashi creates the follow-up requirement under the managed requirement
 directory, preserves the review evidence and minimum acceptance condition, and
 records the blocker severity and follow-up ID in `Completion-Note`. A blocked
-item cannot be completed without an explicit follow-up for every blocker.
+item cannot be completed without an explicit follow-up for every blocker. Once
+inspection reports `complete`, the coordinator may commit the verified
+candidate when the user explicitly authorizes that commit; blocked and repair
+states remain uncommitted, and push/release require separate authorization.
 
 Guard and update an existing artifact status:
 

@@ -15,7 +15,7 @@ permission:
     higurashi-verify-risk: allow
   bash:
     "*": ask
-    "git commit*": deny
+    "git commit*": ask
     "git push*": deny
     "git reset --hard*": deny
     "git checkout --*": deny
@@ -54,8 +54,11 @@ Use read-only tools when they materially improve the answer, including
 CodeGraph, file reads, `git diff`, `git status`, `higurashi inspect`,
 `higurashi config validate`, and `higurashi verification suggest`.
 Do not invoke Higurashi subagents, run workflow-state mutations, or edit files
-in conversation mode. If the user asks to implement a proposal, help shape the
-work item and explain that delivery starts with an exact invocation.
+in conversation mode. If the user explicitly asks to commit an already
+completed delivery, follow the COMMIT section of `higurashi-deliver`; this is
+the one conversation-mode exception for the verified candidate. If the user
+asks to implement a proposal, help shape the work item and explain that
+delivery starts with an exact invocation.
 Conversational answers are not paused or blocked delivery reports and do not
 need a `nextCommand`.
 
@@ -157,6 +160,20 @@ may reply `try again`.
     `repair_recovery_required`, run only that command. Never authorize from a
     normal invocation.
 
+## Commit a completed candidate
+
+The candidate remains uncommitted during delivery. After the user explicitly
+authorizes a commit, run `higurashi inspect <ID> --json` again and continue
+only when it reports `kind: complete`. A human-ordered completion with
+deferred blockers is eligible when the artifact has `Completion-Note` and the
+named follow-up requirements are present. Confirm the working-tree candidate
+matches the inspected artifact, contains no unrelated changes, and has passed
+the configured final checks before running `git commit`.
+
+Never commit a `blocked`, `handoff_required`, `repair_ready`, or
+`repair_recovery_required` artifact, or any other non-complete result. A commit
+does not authorize a push, publication, release, or other remote change.
+
 Only invoke the four named Higurashi subagents. Delegation is one level deep.
 Use CodeGraph before broad filesystem search for structure, call flow,
 dependencies, or impact. Do not silently substitute broad glob, grep, or file
@@ -165,4 +182,5 @@ reading when CodeGraph is available.
 Report the final durable status and exactly one executable next command when
 blocked. For a non-terminal normal delivery, also say that the user may reply
 `try again` after resolving the blocker. Never recommend committing a blocked
-candidate. Never commit or push.
+candidate. Commit only under the completed-candidate rule above; never push
+without separate authorization.

@@ -148,6 +148,9 @@ func TestPiBundleUsesNativeSkillsAndPromptTemplates(t *testing.T) {
 		"$ARGUMENTS",
 		"higurashi-deliver",
 		"subagent",
+		"kind: complete",
+		"Completion-Note",
+		"Never commit a blocked",
 	)
 	requireContains(t, files[".pi/prompts/higurashi-refine.md"],
 		"description:",
@@ -201,6 +204,7 @@ func TestOpenCodeRoleContracts(t *testing.T) {
 		"mode: primary",
 		"edit: ask",
 		"\"*\": deny",
+		"\"git commit*\": ask",
 		"higurashi-plan: allow",
 		"higurashi-apply: allow",
 		"higurashi-verify-contract: allow",
@@ -244,6 +248,9 @@ func TestOpenCodeRoleContracts(t *testing.T) {
 		"invoke PLAN exactly once",
 		"repair authorization while repair planning is required",
 		"require `repair_ready`",
+		"kind: complete",
+		"Completion-Note",
+		"Never commit a `blocked`",
 	)
 	if strings.Contains(orchestrator, "Reject every other") {
 		t.Error("orchestrator rejects conversational input instead of answering it")
@@ -468,6 +475,9 @@ func TestClaudeRoleContracts(t *testing.T) {
 		"require `repair_ready`",
 		"artifact status is `refined`",
 		"/higurashi-loop:refine",
+		"kind: complete",
+		"Completion-Note",
+		"Never commit a `blocked`",
 	)
 	if strings.Contains(skill, "context: fork") {
 		t.Error("Claude main skill forks instead of coordinating in context")

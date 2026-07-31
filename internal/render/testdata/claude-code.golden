@@ -10,5 +10,5 @@ a2a503f6b63928bdc84068bc62213ee6dcca67ebba16f24b800604e852818f9e  agents/higuras
 d5ca35bde716e786ec701649187a65510587d713ad3e5d63022a122818f44ba0  agents/higurashi-refine.md  adapters/claude-code/agents/higurashi-refine.md.tmpl
 6348d1bff2139da145733ac97465d28e6d3e57dc24929c2e2f9ec86da9bb4df9  agents/higurashi-verify-contract.md  adapters/claude-code/agents/higurashi-verify-contract.md.tmpl
 3d70864e812068e672081a89cee9ad1398a6af82049492ac4d20cfd5f33baf17  agents/higurashi-verify-risk.md  adapters/claude-code/agents/higurashi-verify-risk.md.tmpl
-6f3334d3c05e5bd383ba5a4218bbf03d3e36acf978e0fca39a7b8948b06ea4bd  skills/deliver/SKILL.md  adapters/claude-code/skills/deliver/SKILL.md.tmpl
+732fb4d864f84480612e9066c5b3ec6b7aa9b8e0349cffc29002804c8b00b4c2  skills/deliver/SKILL.md  adapters/claude-code/skills/deliver/SKILL.md.tmpl
 cef5eaa1b65f34ff071527831464814c52e9ab968cd95a1645e7cebc1ed371a6  skills/refine/SKILL.md  adapters/claude-code/skills/refine/SKILL.md.tmpl
